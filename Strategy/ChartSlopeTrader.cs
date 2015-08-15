@@ -19,7 +19,6 @@ namespace NinjaTrader.Strategy
     {
 
 		#region VS2010 Controls Paste
-
 		private GroupBox groupBox_StatusWindow;
         private GroupBox groupBox_Quantity;
         private NumericUpDown numericUpDown_Quantity;
@@ -79,11 +78,12 @@ namespace NinjaTrader.Strategy
 	    private bool _showPanel;
 	    private Color _enabledColor = Color.ForestGreen;
 	    private Color _disabledColor = Color.LightCoral;
-	    private bool isActive;
+	    private bool _isActive;
 	    private bool _isCountingRR;
 	    private bool _isRRAfter;
 	    private string _pleaseSelectRay = "Please Select Ray";
 	    private RayContainer _currentRayContainer;
+	    private IOrder currentOrder;
 	    private bool doBigger;
 
 	    #endregion
@@ -134,7 +134,25 @@ namespace NinjaTrader.Strategy
         protected override void OnBarUpdate()
         {
 	        UpdateGraphics();
+	        if (_isActive && _currentRayContainer != null)
+		        UpdateOrders();
         }
+
+	    private void UpdateOrders()
+	    {
+		    if (Position.MarketPosition == MarketPosition.Flat)
+		    {
+			    if (_currentRayContainer.PositionType == MarketPosition.Short)
+				  currentOrder=EnterShortStop((int)numericUpDown_Quantity.Value, RayContainer.RayPrice(_currentRayContainer._entryRay));
+			    else
+				  currentOrder=EnterLongStop((int)numericUpDown_Quantity.Value, RayContainer.RayPrice(_currentRayContainer._entryRay));
+		    }
+		    else
+		    {
+			   SetProfitTarget(CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer._profitTargetRay));
+			   SetStopLoss(CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer._stopRay));
+		    }
+	    }
 
 	    private void UpdateGraphics()
 	    {
@@ -178,7 +196,7 @@ namespace NinjaTrader.Strategy
 			    }
 
 			    if (Reward != 0)
-				    RRLabel.Text = (Risk/Reward).ToString();
+				    RRLabel.Text = Math.Round((Risk/Reward),3).ToString();
 		    }
 			//Todo: Write the 50% RR funinality 
 			//R: R 50 % indicator: Same as above but when 50 % Partial Take Profit line is enabled use
@@ -258,12 +276,6 @@ namespace NinjaTrader.Strategy
 
 	    #endregion
 
-	    private void OnLongAndShortClick()
-	    {
-		    MessageBox.Show("We pressed the Short Or Long");
-		    _isCountingRR = true;
-		    _isRRAfter = false;
-	    }
 
 	    #region Click Events FORM 01
 
@@ -275,10 +287,18 @@ namespace NinjaTrader.Strategy
 			    MessageBox.Show(_pleaseSelectRay);
 			    return;
 		    }
+		    else
+		    {
+		    }
+		    if (_isActive)
+		    {
+			    MessageBox.Show("We already active we can change position while we Active");
+				return;
+		    }
 			//We crating the continer for the rays
 			_currentRayContainer = new RayContainer(MarketPosition.Long,ray,this);
 		    _currentRayContainer.Update();
-		    OnLongAndShortClick();
+			UpdateForms();
 		 }
 
 	    private void button_ManualShort_Click(object sender, EventArgs e)
@@ -289,10 +309,16 @@ namespace NinjaTrader.Strategy
 			    MessageBox.Show(_pleaseSelectRay);
 			    return;
 		    }
+		    if (_isActive)
+		    {
+			    MessageBox.Show("We already active we can change position while we Active");
+				return;
+		    }
 			//We are creating container for a rays
-			_currentRayContainer = new RayContainer(MarketPosition.Short,ray,this);
+		    _currentRayContainer = new RayContainer(MarketPosition.Short, ray, this);
 		    _currentRayContainer.Update();
-			OnLongAndShortClick();
+			UpdateForms();
+
         }
 
         private void button_MakeHorizizontalLine_Click(object sender, EventArgs e)
@@ -300,9 +326,7 @@ namespace NinjaTrader.Strategy
 	        IRay ray;
 	        if (GetSelectedRay(out ray))
 	        {
-				if(ray==null)
-					MessageBox.Show("Over ray is null");
-		        double averagePrice = (ray.Anchor1Y + ray.Anchor2Y)/2;
+		        double averagePrice = RayContainer.RayPrice(ray);
 		        ChartRay rayToUse = ray as ChartRay;
 		        rayToUse.StartY = averagePrice;
 		        rayToUse.EndY = averagePrice;
@@ -345,9 +369,58 @@ namespace NinjaTrader.Strategy
             }
         }
 
+	    private void _buttonActivateClick(object sender, EventArgs e)
+	    {
+		    if (_currentRayContainer == null)
+		    {
+			    MessageBox.Show("You don't have lines to trade with");
+			    return;
+		    }
+		    if (!_isActive)
+		    {
+			    _isActive = true;
+			    StatusLabel.BackColor = _enabledColor;
+			    if (_currentRayContainer.PositionType == MarketPosition.Long)
+			    {
+				    StatusLabel.Text = "Active: Long Position";
+			    }
+			    else
+			    {
+				    StatusLabel.Text = "Active: Short Position";
+			    }
+		    }
+		    else
+		    {
+			    MessageBox.Show("You already active");
+		    }
+	    }
 
+	    private void _buttonClearSelection_Click(object sender, EventArgs e)
+		{
+		    if (MarketPosition.Flat != Position.MarketPosition)
+		    {
+			    MessageBox.Show("You are trading close or diactivate to clear");
+				return;
+		    }
 
-		#endregion
+			if (_currentRayContainer != null)
+			{
+				_currentRayContainer.Clear();
+				_currentRayContainer = null;
+				if (_isActive)
+					DeActivate();
+				UpdateForms();
+			}
+		}
+
+	    private void DeActivate()
+	    {
+		    StatusLabel.Text = "Not Active";
+		    StatusLabel.BackColor = _disabledColor;
+		    _isActive = false;
+	    }
+
+	    #endregion
 
 		#region FORM 01 - VS2010 Controls Initialization
 
@@ -692,6 +765,7 @@ namespace NinjaTrader.Strategy
             button_ClosePosition.TabIndex = 3;
             button_ClosePosition.Text = "MANUAL CLOSE 100%";
             button_ClosePosition.UseVisualStyleBackColor = false;
+			button_ClosePosition.Click += button_ClosePositionClick;
             // 
             // button_ManualShort
             // 
@@ -1065,43 +1139,21 @@ namespace NinjaTrader.Strategy
             ChartControl.Controls.Add(MainPanel);
         }
 
-	    private void _buttonActivateClick(object sender, EventArgs e)
+	    private void button_ClosePositionClick(object sender, EventArgs e)
 	    {
-		    if (_currentRayContainer == null)
+		    if (Position.MarketPosition == MarketPosition.Flat)
 		    {
-			    MessageBox.Show("You don't have lines to trade with");
+			    MessageBox.Show("We have nothing to close");
 			    return;
 		    }
-		    if (!isActive)
-		    {
-			    isActive = true;
-			    StatusLabel.BackColor = _enabledColor;
-			    if (_currentRayContainer.PositionType == MarketPosition.Long)
-			    {
-				    StatusLabel.Text = "Active: Long Position";
-			    }
-			    else
-			    {
-				    StatusLabel.Text = "Active: Short Position";
-			    }
-		    }
-		    else
-		    {
-			    MessageBox.Show("You already active");
-		    }
+			if(MarketPosition.Short==Position.MarketPosition)
+				ExitShort();
+
+			if(MarketPosition.Long==Position.MarketPosition)
+				ExitLong();
 	    }
 
-	    private void _buttonClearSelection_Click(object sender, EventArgs e)
-		{
-			if (_currentRayContainer != null)
-			{
-				_currentRayContainer.Clear();
-				_currentRayContainer = null;
-				UpdateForms();
-			}
-		}
-
-		#endregion
+	    #endregion
 
 		#region Properties
 		#endregion
@@ -1133,13 +1185,12 @@ namespace NinjaTrader.Strategy
 		private int _textShift = 10;
 
 		private Strategy _Strategy { get; set; }
-		private MarketPosition _marketPosition { get; set; }
 		
 		public RayContainer(MarketPosition marketPosition, IRay ray, Strategy strategy)
 		{
 			//Initialization over variables
 			_Strategy = strategy;
-			_marketPosition = marketPosition;
+			PositionType = marketPosition;
 
 			double distance = TicksTarget * strategy.TickSize;
 			//Setting oposit direaction if we are in the long
@@ -1198,19 +1249,6 @@ namespace NinjaTrader.Strategy
 			double rayPrice = (-oneBarDistance*ray.Anchor2BarsAgo)+ray.Anchor2Y;
 			return Math.Round(rayPrice,5);
 		} 
-
-		public void SetOrder(bool isFlat)
-		{
-			if (isFlat)
-			{
-				//We are only opening the order for Enter to the market
-			}
-			{
-				//We making stop loss
-				//And Take profit Order
-			}
-			
-		}
 
 		public void Clear()
 		{
