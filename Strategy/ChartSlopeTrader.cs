@@ -99,11 +99,17 @@ namespace NinjaTrader.Strategy
         {
 	        // Initialize Forms
 	        VS2010_InitializeComponent_Form();
+	        ChartControl.ChartPanel.MouseMove += MouseMoveAction;
 	        // Add Toolbar Button
 	        ButtonToThetop();
         }
 
-        protected override void OnTermination()
+	    private void MouseMoveAction(object sender, MouseEventArgs e)
+	    {
+		    UpdateGraphics();
+	    }
+
+	    protected override void OnTermination()
         {
             if (MainPanel != null)
             {
@@ -127,37 +133,53 @@ namespace NinjaTrader.Strategy
 
         protected override void OnBarUpdate()
         {
-	       UpdateRR();
-		}
-		private void UpdateRR()
+	        UpdateGraphics();
+        }
+
+	    private void UpdateGraphics()
+	    {
+		    if (_currentRayContainer != null)
+		    {
+				UpdateRR();
+				_currentRayContainer.Update();
+		    }
+			
+	    }
+
+	    private void UpdateRR()
 	    {
 			//Todo: write those RR functionlity
-			if (_isCountingRR)
-			{
 
-				double Risk =	0;
-				double Reward =	1;
-			    if (!_isRRAfter)
-				{
-					//Before a LONG or SHORT position has been bough or sold:
-					//Formula(before):
-					//Risk = abs([Entry Line] - [Stop])
-					//Reward = abs([Profit Target] - [Entry Line]).
+		    if (_currentRayContainer!=null)
+		    {
+			    double Risk = 0;
+			    double Reward = 1;
+			    if (MarketPosition.Flat==Position.MarketPosition)
+			    {
+				    Risk =
+					    Math.Abs(RayContainer.RayPrice(_currentRayContainer._entryRay) -
+					             RayContainer.RayPrice(_currentRayContainer._stopRay));
+				    Reward = 
+					    Math.Abs(RayContainer.RayPrice(_currentRayContainer._profitTargetRay) -
+					             RayContainer.RayPrice(_currentRayContainer._entryRay));
 
 			    }
 			    else
 			    {
-					//After we are in a LONG or SHORT position, looking for a profit:
-					//Formula(after):
-					//Risk = abs([Current Position Price] - [Stop]),
-					//Reward = abs([Profit Target] - [Current
-				//position price])
+				    //After we are in a LONG or SHORT position, looking for a profit:
+				    //Formula(after):
+				    Risk =
+					    Math.Abs(Close[0]-
+						 RayContainer.RayPrice(_currentRayContainer._stopRay));
+
+					Reward=
+					    Math.Abs(Close[0]-
+						 RayContainer.RayPrice(_currentRayContainer._profitTargetRay));
 			    }
 
-				if(Reward!=null)
-					RRLabel.Text = (Risk/Reward).ToString();
-
-			}
+			    if (Reward != 0)
+				    RRLabel.Text = (Risk/Reward).ToString();
+		    }
 			//Todo: Write the 50% RR funinality 
 			//R: R 50 % indicator: Same as above but when 50 % Partial Take Profit line is enabled use
 			//[50 % Partial Take Profit] Line in the calculation. That way we can see R:R for both lines
@@ -273,26 +295,6 @@ namespace NinjaTrader.Strategy
 			OnLongAndShortClick();
         }
 
-        private void button_ClosePosition_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void button_UpdateQuantity_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void button_CloseHalfPosition_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void comboBox_OrderType_SelectedIndexChanged(object sender, EventArgs e)
-        {
-
-        }
-
         private void button_MakeHorizizontalLine_Click(object sender, EventArgs e)
         {
 	        IRay ray;
@@ -304,6 +306,8 @@ namespace NinjaTrader.Strategy
 		        ChartRay rayToUse = ray as ChartRay;
 		        rayToUse.StartY = averagePrice;
 		        rayToUse.EndY = averagePrice;
+				if(_currentRayContainer!=null)
+					_currentRayContainer.Update();
 				UpdateForms();
 	        }
 			else
@@ -325,11 +329,6 @@ namespace NinjaTrader.Strategy
 	    {
 		    MessageBox.Show("Please select line First");
 	    }
-
-	    private void checkBox_EnableTrailStop_CheckedChanged(object sender, EventArgs e)
-        {
-
-        }
 
         private void Enable50Profit_Changed(object sender, EventArgs e)
         {
@@ -448,6 +447,7 @@ namespace NinjaTrader.Strategy
 			_buttonActivate.TabIndex = 9;
 			_buttonActivate.Text = "ACTIVATE";
 			_buttonActivate.UseVisualStyleBackColor = false;
+			_buttonActivate.Click += _buttonActivateClick;
 			#endregion
             // 
             // groupBox_StatusWindow
@@ -591,7 +591,6 @@ namespace NinjaTrader.Strategy
             comboBox_OrderType.Name = "comboBox_OrderType";
             comboBox_OrderType.Size = new Size(66, 21);
             comboBox_OrderType.TabIndex = 4;
-            comboBox_OrderType.SelectedIndexChanged += comboBox_OrderType_SelectedIndexChanged;
             // 
             // groupBox_PartialProfit
             // 
@@ -631,7 +630,6 @@ namespace NinjaTrader.Strategy
             button_CloseHalfPosition.TabIndex = 2;
             button_CloseHalfPosition.Text = "MANUAL CLOSE 50%";
             button_CloseHalfPosition.UseVisualStyleBackColor = false;
-            button_CloseHalfPosition.Click += button_CloseHalfPosition_Click;
             // 
             // checkBox_EnablePartialProfit
             // 
@@ -669,7 +667,6 @@ namespace NinjaTrader.Strategy
             button_UpdateQuantity.TabIndex = 1;
             button_UpdateQuantity.Text = "Update";
             button_UpdateQuantity.UseVisualStyleBackColor = false;
-            button_UpdateQuantity.Click += button_UpdateQuantity_Click;
             // 
             // numericUpDown_Quantity
             // 
@@ -695,7 +692,6 @@ namespace NinjaTrader.Strategy
             button_ClosePosition.TabIndex = 3;
             button_ClosePosition.Text = "MANUAL CLOSE 100%";
             button_ClosePosition.UseVisualStyleBackColor = false;
-            button_ClosePosition.Click += button_ClosePosition_Click;
             // 
             // button_ManualShort
             // 
@@ -913,26 +909,17 @@ namespace NinjaTrader.Strategy
             checkBox_EnableTrailStop.TabIndex = 4;
             checkBox_EnableTrailStop.Text = "Enable";
             checkBox_EnableTrailStop.UseVisualStyleBackColor = true;
-            checkBox_EnableTrailStop.CheckedChanged += checkBox_EnableTrailStop_CheckedChanged;
             // 
             // numericUpDown_StopLevelTicks
             // 
             numericUpDown_StopLevelTicks.Location = new Point(118, 99);
             numericUpDown_StopLevelTicks.Margin = new Padding(2);
-            numericUpDown_StopLevelTicks.Maximum = new decimal(new int[] {
-            99,
-            0,
-            0,
-            0});
+            numericUpDown_StopLevelTicks.Maximum = new decimal(new int[] { 99, 0, 0, 0});
             numericUpDown_StopLevelTicks.Name = "numericUpDown_StopLevelTicks";
             numericUpDown_StopLevelTicks.Size = new Size(34, 20);
             numericUpDown_StopLevelTicks.TabIndex = 13;
             numericUpDown_StopLevelTicks.TextAlign = HorizontalAlignment.Center;
-            numericUpDown_StopLevelTicks.Value = new decimal(new int[] {
-            9,
-            0,
-            0,
-            0});
+            numericUpDown_StopLevelTicks.Value = new decimal(new int[] { 9, 0, 0, 0});
             // 
             // groupBox_StopToEntry
             // 
@@ -978,20 +965,12 @@ namespace NinjaTrader.Strategy
             // 
             numericUpDown_PipTicksToActivate.Location = new Point(116, 51);
             numericUpDown_PipTicksToActivate.Margin = new Padding(2);
-            numericUpDown_PipTicksToActivate.Maximum = new decimal(new int[] {
-            99,
-            0,
-            0,
-            0});
+            numericUpDown_PipTicksToActivate.Maximum = new decimal(new int[] { 99, 0, 0, 0});
             numericUpDown_PipTicksToActivate.Name = "numericUpDown_PipTicksToActivate";
             numericUpDown_PipTicksToActivate.Size = new Size(34, 20);
             numericUpDown_PipTicksToActivate.TabIndex = 12;
             numericUpDown_PipTicksToActivate.TextAlign = HorizontalAlignment.Center;
-            numericUpDown_PipTicksToActivate.Value = new decimal(new int[] {
-            10,
-            0,
-            0,
-            0});
+            numericUpDown_PipTicksToActivate.Value = new decimal(new int[] { 10, 0, 0, 0});
             // 
             // button_ManualMoveStop
             // 
@@ -1086,12 +1065,39 @@ namespace NinjaTrader.Strategy
             ChartControl.Controls.Add(MainPanel);
         }
 
-		private void _buttonClearSelection_Click(object sender, EventArgs e)
+	    private void _buttonActivateClick(object sender, EventArgs e)
+	    {
+		    if (_currentRayContainer == null)
+		    {
+			    MessageBox.Show("You don't have lines to trade with");
+			    return;
+		    }
+		    if (!isActive)
+		    {
+			    isActive = true;
+			    StatusLabel.BackColor = _enabledColor;
+			    if (_currentRayContainer.PositionType == MarketPosition.Long)
+			    {
+				    StatusLabel.Text = "Active: Long Position";
+			    }
+			    else
+			    {
+				    StatusLabel.Text = "Active: Short Position";
+			    }
+		    }
+		    else
+		    {
+			    MessageBox.Show("You already active");
+		    }
+	    }
+
+	    private void _buttonClearSelection_Click(object sender, EventArgs e)
 		{
 			if (_currentRayContainer != null)
 			{
 				_currentRayContainer.Clear();
 				_currentRayContainer = null;
+				UpdateForms();
 			}
 		}
 
@@ -1103,15 +1109,18 @@ namespace NinjaTrader.Strategy
 
 	internal class RayContainer
 	{
-		public MarketPosition PositionType;
-		public static int TicksTarget  =5;
-		private IRay _originRay;
-		private IRay _entryRay;
-		private IRay _stopRay;
-		private IRay _profitTargetRay;
 		private static Color EnterColor = Color.DarkRed;
 		private static Color TPColor = Color.Lime;
-		private static Color StopColor = Color.Red ;
+		private static Color StopColor = Color.Red;
+
+		public MarketPosition PositionType;
+		public static int TicksTarget = 5;
+
+		public IRay _originRay;
+		public IRay _entryRay;
+		public IRay _stopRay;
+		public IRay _profitTargetRay;
+
 		private Color DotColor = Color.Black;
 		private Color TextColror = Color.Black;
 		private IDot _eDot;
@@ -1121,6 +1130,7 @@ namespace NinjaTrader.Strategy
 		private IText _sText;
 		private IDot _tpDot;
 		private IText _tpText;
+		private int _textShift = 10;
 
 		private Strategy _Strategy { get; set; }
 		private MarketPosition _marketPosition { get; set; }
@@ -1161,22 +1171,32 @@ namespace NinjaTrader.Strategy
 		{
 			//For enter Ray
 			_eDot = _Strategy.DrawDot("enterDot", true, 0, RayPrice(_entryRay), DotColor);
-			_eText = _Strategy.DrawText("enterText", RayPrice(_entryRay).ToString(), 0, RayPrice(_entryRay), TextColror);
+			string s = RayPrice(_entryRay).ToString();
+			_eText = _Strategy.DrawText("enterText", TextForma(s), 0, RayPrice(_entryRay), TextColror);
 
 			//For stop Ray
 			_sDot=_Strategy.DrawDot("stopDot", true, 0, RayPrice(_stopRay), DotColor);
-			_sText=_Strategy.DrawText("stopText", RayPrice(_stopRay).ToString(), 0, RayPrice(_stopRay), TextColror);
+			string text = RayPrice(_stopRay).ToString();
+			_sText=_Strategy.DrawText("stopText", TextForma(text), 0, RayPrice(_stopRay), TextColror);
 
 			//For TP Ray
 			_tpDot=_Strategy.DrawDot("TPDot", true, 0, RayPrice(_profitTargetRay), DotColor);
-			_tpText=_Strategy.DrawText("TPText", RayPrice(_profitTargetRay).ToString(), 0, RayPrice(_profitTargetRay), TextColror);
+			string priceText = RayPrice(_profitTargetRay).ToString();
+			_tpText=_Strategy.DrawText("TPText",TextForma(priceText),  0, RayPrice(_profitTargetRay), TextColror);
 		}
+
+		private string TextForma(string priceText)
+		{
+			return new string(' ', priceText.Length+_textShift)+priceText;
+		}
+
 		public static double RayPrice(IRay ray)
 		{
 			//So how much step per bar we got here
 			double oneBarDistance = (ray.Anchor1Y - ray.Anchor2Y)/(ray.Anchor1BarsAgo - ray.Anchor2BarsAgo);
 			//Now how add the count of those steps to over lest price and then return 
-			return (oneBarDistance*ray.Anchor2BarsAgo)+ray.Anchor2Y;
+			double rayPrice = (-oneBarDistance*ray.Anchor2BarsAgo)+ray.Anchor2Y;
+			return Math.Round(rayPrice,5);
 		} 
 
 		public void SetOrder(bool isFlat)
@@ -1194,20 +1214,22 @@ namespace NinjaTrader.Strategy
 
 		public void Clear()
 		{
-			//Removing rays
-			RemoveRays();
-		}
-
-		private void RemoveRays()
-		{
+			//Reomving lines
 			_Strategy.RemoveDrawObject(_entryRay);
 			_Strategy.RemoveDrawObject(_stopRay);
 			_Strategy.RemoveDrawObject(_profitTargetRay);
+
+			//Removing Dots
+			_Strategy.RemoveDrawObject(_eDot);
+			_Strategy.RemoveDrawObject(_sDot);
+			_Strategy.RemoveDrawObject(_tpDot);
+
+			//Removing Text
+			_Strategy.RemoveDrawObject(_sText);
+			_Strategy.RemoveDrawObject(_eText);
+			_Strategy.RemoveDrawObject(_tpText);
 		}
-	}
-
-	internal sealed class RayUtilits
-	{
 
 	}
+
 }
