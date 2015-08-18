@@ -861,7 +861,8 @@ namespace NinjaTrader.Strategy
 		    }
 		    else
 		    {
-			    if (_currentRayContainer.ClosingHulf)
+
+			    if (!_currentRayContainer.ClosingHulf)
 			    {
 				    if (_currentRayContainer.PositionType == MarketPosition.Short)
 				    {
@@ -880,8 +881,12 @@ namespace NinjaTrader.Strategy
 					    }
 				    }
 			    }
-				SetProfitTarget(CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer.ProfitTargetRay));
-				SetStopLoss(CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer.StopRay));
+				else
+			    {
+				SetStopLoss("StopLossCST",CalculationMode.Price,RayContainer.RayPrice(_currentRayContainer.StopRay),false);
+				SetTrailStop("TrailingStopCST",CalculationMode.Price,RayContainer.RayPrice(_currentRayContainer.ProfitTargetRay),false);
+
+			    }
 		    }
 	    }
 
