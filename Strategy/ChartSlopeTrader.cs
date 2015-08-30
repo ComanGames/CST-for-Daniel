@@ -154,12 +154,15 @@ namespace NinjaTrader.Strategy
 			_strategy.RemoveDrawObject(_eText);
 			_strategy.RemoveDrawObject(_tpText);
 
-			if (ClosingHalf)
-			{
-				_strategy.RemoveDrawObject(HalfCloseRay);
-				_strategy.RemoveDrawObject(_hcText);
-				_strategy.RemoveDrawObject(_hcDot);
-			}
+			ClearHalfLine();
+		}
+
+		private void ClearHalfLine()
+		{
+			//Removing half line 
+			if (HalfCloseRay != null) _strategy.RemoveDrawObject(HalfCloseRay);
+			if (_hcText != null) _strategy.RemoveDrawObject(_hcText);
+			if (_hcDot != null) _strategy.RemoveDrawObject(_hcDot);
 		}
 
 		public void PartialProfitEnable()
@@ -171,11 +174,13 @@ namespace NinjaTrader.Strategy
 				d *= -1;
 
 			//Drawing the ray
+			double distance = .3;
 			HalfCloseRay = _strategy.DrawRay("HalfClose", false,
-				ProfitTargetRay.Anchor1BarsAgo, ProfitTargetRay.Anchor1Y + d*.6, ProfitTargetRay.Anchor2BarsAgo,
-				ProfitTargetRay.Anchor2Y + d*.6,
+				ProfitTargetRay.Anchor1BarsAgo, ProfitTargetRay.Anchor1Y + d*distance, ProfitTargetRay.Anchor2BarsAgo,
+				ProfitTargetRay.Anchor2Y + d*distance,
 				HcColor, DashStyle.Dash, 2);
 
+			Update();
 			HalfCloseRay.Locked = false;
 		}
 
@@ -184,15 +189,16 @@ namespace NinjaTrader.Strategy
 			ClosingHalf = false;
 			//Remove the ray if we got it already
 			if (HalfCloseRay != null)
+			{
 				_strategy.RemoveDrawObject(HalfCloseRay);
+				ClearHalfLine();
+			}
 		}
 	}
 
 	[Description("Trade Slope Lines")]
 	public class ChartSlopeTrader : Strategy
 	{
-
-
 		#region Variables
 		private ToolStrip _myToolStrip;
 		private ToolStripButton _myTsButton;
@@ -219,7 +225,6 @@ namespace NinjaTrader.Strategy
 			CalculateOnBarClose = false;
 			Enabled = true;
 		}
-
 		protected override void OnStartUp()
 		{
 			// Initialize Forms
@@ -228,7 +233,6 @@ namespace NinjaTrader.Strategy
 			// Add Toolbar Button
 			ButtonToThetop();
 		}
-
 		protected override void OnTermination()
 		{
 			if (_mainPanel != null)
@@ -250,12 +254,55 @@ namespace NinjaTrader.Strategy
 			_myTsButton = null;
 			_myTsSeparator = null;
 		}
-
 		protected override void OnBarUpdate()
 		{
 			UpdateGraphics();
 			if (_isActive && _currentRayContainer != null)
+			{
 				UpdateOrders();
+				if (!_radioButtonNone.Checked)
+					CheckSte();
+			}
+		}
+
+		private void CheckSte()
+		{
+			if (_radioButtonEntryLine.Checked)
+			{
+				if (Position.MarketPosition != MarketPosition.Flat)
+				{
+					double distance = TickSize*_numericUpDownPipTicksToActivate.DecimalPlaces;
+					if (Position.MarketPosition == MarketPosition.Long)
+					{
+						if (Close[0] >= RayContainer.RayPrice(_currentRayContainer.EntryRay) + distance)
+							MoveStopLineTo(_currentRayContainer.EntryRay);
+					}
+					else
+					{
+						if (Close[0] <= RayContainer.RayPrice(_currentRayContainer.EntryRay) - distance)
+							MoveStopLineTo(_currentRayContainer.EntryRay);
+					}
+				}
+			}
+			if (_radioButtonPartialProfit.Checked)
+			{
+				if (Position.MarketPosition != MarketPosition.Flat)
+				{
+					double distance = TickSize * _numericUpDownPipTicksToActivate.DecimalPlaces;
+					if (Position.MarketPosition == MarketPosition.Long)
+					{
+						if (Close[0] >= RayContainer.RayPrice(_currentRayContainer.HalfCloseRay) + distance)
+							MoveStopLineTo(_currentRayContainer.HalfCloseRay);
+					}
+					else
+					{
+						if (Close[0] <= RayContainer.RayPrice(_currentRayContainer.HalfCloseRay) - distance)
+							MoveStopLineTo(_currentRayContainer.HalfCloseRay);
+					}
+
+				}
+
+			}
 		}
 
 		private void UpdateOrders()
@@ -296,55 +343,29 @@ namespace NinjaTrader.Strategy
 				}
 			}
 		}
-
 		private void OrderTriggerEnterLongStop()
 		{
 			int quantity = (int) _numericUpDownQuantity.Value;
 			double stopPrice = RayContainer.RayPrice(_currentRayContainer.EntryRay);
 				EnterLongStop(quantity,stopPrice);
 		}
-
 		private void OrderTriggerEnterShortStop()
 		{
 			int quantity = (int) _numericUpDownQuantity.Value;
 			double stopPrice = RayContainer.RayPrice(_currentRayContainer.EntryRay);
 			EnterShortStop(quantity, stopPrice);
 		}
-
-
-		private void SetSLandTp()
-		{
-			IRay entryRay = _currentRayContainer.EntryRay;
-			if (_currentRayContainer.PositionType == MarketPosition.Long)
-			{
-				if (Close[0] > RayContainer.RayPrice(entryRay))
-					SetTrailStop("TrailingStopCST", CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer.ProfitTargetRay), true);
-				else
-					SetStopLoss("StopLossCST", CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer.StopRay), false);
-			}
-			else
-			{
-				if (Close[0] < RayContainer.RayPrice(entryRay))
-					SetTrailStop("TrailingStopCST", CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer.ProfitTargetRay), true);
-				else
-					SetStopLoss("StopLossCST", CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer.StopRay), false);
-			}
-		}
-
 		private void UpdateGraphics()
 		{
 			if (_currentRayContainer != null)
 			{
-				UpdateRR();
+				UpdateRr();
 				_currentRayContainer.Update();
 			}
 			
 		}
-
-		private void UpdateRR()
+		private void UpdateRr()
 		{
-			//Todo: write those RR functionlity
-
 			if (_currentRayContainer!=null)
 			{
 				double risk;
@@ -374,7 +395,9 @@ namespace NinjaTrader.Strategy
 
 				if (Math.Abs(reward) > 0.00000000001)
 					_rrLabel.Text = Math.Round((reward/risk),2).ToString(CultureInfo.InvariantCulture);
-				//For 50% RR 
+				//=====================================================================
+				//								For 50% RR 
+				//=====================================================================
 				if (_currentRayContainer.ClosingHalf)
 				{
 					if (MarketPosition.Flat == Position.MarketPosition)
@@ -400,27 +423,20 @@ namespace NinjaTrader.Strategy
 							         RayContainer.RayPrice(_currentRayContainer.HalfCloseRay));
 					}
 					if (Math.Abs(reward) > 0.000000001)
-						_rr50Label.Text = Math.Round((reward / risk), 2).ToString();
+						_rr50Label.Text = Math.Round((reward / risk), 2).ToString(CultureInfo.InvariantCulture);
 
 				}
 
 			}
-			//Todo: Write the 50% RR funinality 
-			//R: R 50 % indicator: Same as above but when 50 % Partial Take Profit line is enabled use
-			//[50 % Partial Take Profit] Line in the calculation. That way we can see R:R for both lines
 
 		}
-
-		#region Misc Routines
-
 		public bool GetSelectedRay(out IRay ray)
 		{
 			ray = null;
 			//Instance for over result 
-			IRay result = null;
 			//Getting Reflection black door open
 			Type chartControlType = typeof (ChartControl);
-			//Now we want to get access to  secreat field 
+			//Now we want to get access to field 
 			FieldInfo fi = chartControlType.GetField("selectedObject", BindingFlags.NonPublic | BindingFlags.Instance);
 			//Now if rely got this one 
 			if (fi != null)
@@ -430,10 +446,11 @@ namespace NinjaTrader.Strategy
 				{
 					//Getting the instance of the object
 					object clickedObject = fi.GetValue(ChartControl);
-					//Checking if ti posible to convert
-					if (clickedObject is IRay)
+					//Checking if we could convert
+					var o = clickedObject as IRay;
+					if (o != null)
 					{
-						ray = (IRay) clickedObject;
+						ray = o;
 						return true;
 						//Converting 
 					}
@@ -441,7 +458,6 @@ namespace NinjaTrader.Strategy
 			}
 			return false;
 		}
-
 		private void ButtonToThetop()
 		{
 			Control[] tscontrol = ChartControl.Controls.Find("tsrTool", false);
@@ -461,7 +477,6 @@ namespace NinjaTrader.Strategy
 				SetCstButtonText();
 			}
 		}
-
 		private void SetCstButtonText()
 		{
 			if (_mainPanel.Visible)
@@ -475,9 +490,9 @@ namespace NinjaTrader.Strategy
 				_myTsButton.BackColor = _enabledColor;
 			}
 		}
-
 		private void UpdateForms()
 		{
+			// ReSharper disable once ConvertIfStatementToConditionalTernaryExpression
 			if(_doBigger)
 				ChartControl.Size = new Size(ChartControl.Size.Width + 1, ChartControl.Size.Height);
 			else
@@ -489,22 +504,17 @@ namespace NinjaTrader.Strategy
 		{
 			MessageBox.Show("Please select line First");
 		}
-
-
-		private void vShowForm_Panel(object s, EventArgs e)
+		private void DeActivate()
 		{
-			_mainPanel.Visible = !_mainPanel.Visible;
-			SetCstButtonText();
+			_statusLabel.Text = "Not Active";
+			_statusLabel.BackColor = _disabledColor;
+			_isActive = false;
 		}
-
+		//			Form Events
 		private void MouseMoveAction(object sender, MouseEventArgs e)
 		{
 			UpdateGraphics();
 		}
-
-		#endregion
-
-		#region Click Events FORM 01
 
 		private void button_ManualLong_Click(object sender, EventArgs e)
 		{
@@ -519,7 +529,8 @@ namespace NinjaTrader.Strategy
 				MessageBox.Show("We already active we can change position while we Active");
 				return;
 			}
-			//We crating the continer for the rays
+			//We crating the container for the rays
+			// ReSharper disable once UseNullPropagation
 			if(_currentRayContainer!=null)
 				_currentRayContainer.Clear();
 			_currentRayContainer = new RayContainer(MarketPosition.Long, ray, this, _checkBoxEnablePartialProfit.Checked,
@@ -551,15 +562,19 @@ namespace NinjaTrader.Strategy
 
 		}
 
-		private void button_MakeHorizizontalLine_Click(object sender, EventArgs e)
+		private void button_MakeHorizontalLine_Click(object sender, EventArgs e)
 		{
 			IRay ray;
 			if (GetSelectedRay(out ray))
 			{
 				double averagePrice = RayContainer.RayPrice(ray);
 				ChartRay rayToUse = ray as ChartRay;
-				rayToUse.StartY = averagePrice;
-				rayToUse.EndY = averagePrice;
+				if (rayToUse != null)
+				{
+					rayToUse.StartY = averagePrice;
+					rayToUse.EndY = averagePrice;
+				}
+				// ReSharper disable once UseNullPropagation
 				if(_currentRayContainer!=null)
 					_currentRayContainer.Update();
 				UpdateForms();
@@ -567,28 +582,6 @@ namespace NinjaTrader.Strategy
 			else
 				MassageIfLineNotSelected();
 
-		}
-
-		private void Enable50Profit_Changed(object sender, EventArgs e)
-		{
-			if (_currentRayContainer == null)
-			{
-				MessageBox.Show("Please select ray and Long or Short mode first");
-				return;
-			}
-			//Todo:make logic to to Particl Close 
-			if (_checkBoxEnablePartialProfit.Checked)
-			{
-				_partialMsgLabel.Text = "50% TP Enabled";
-				_partialMsgLabel.BackColor = _enabledColor;
-				_currentRayContainer.PartialProfitEnable();
-			}
-			else
-			{
-				_partialMsgLabel.Text = "50% TP Disabled";
-				_partialMsgLabel.BackColor = _disabledColor;
-				_currentRayContainer.ParialProfitDisable();
-			}
 		}
 
 		private void _buttonActivateClick(object sender, EventArgs e)
@@ -602,26 +595,31 @@ namespace NinjaTrader.Strategy
 			{
 				_isActive = true;
 				_statusLabel.BackColor = _enabledColor;
-				if (_currentRayContainer.PositionType == MarketPosition.Long)
-				{
-					_statusLabel.Text = "Active: Long Position";
-				}
-				else
-				{
-					_statusLabel.Text = "Active: Short Position";
-				}
+				_statusLabel.Text = _currentRayContainer.PositionType == MarketPosition.Long ? "Active: Long Position" : "Active: Short Position";
 			}
 			else
 			{
 				MessageBox.Show("You already active");
 			}
 		}
+		private void button_CloseHalfPositionClick(object sender, EventArgs e)
+		{
+			if (Position.MarketPosition == MarketPosition.Flat)
+			{
+				MessageBox.Show("No open position to close half");
+				return;
+			}
+			if (Position.MarketPosition == MarketPosition.Short)
+				ExitShort(_currentOrder.Quantity/2);
+			else
+				ExitLong(_currentOrder.Quantity/2);
+		}
 
 		private void _buttonClearSelection_Click(object sender, EventArgs e)
 		{
 			if (MarketPosition.Flat != Position.MarketPosition)
 			{
-				MessageBox.Show("You are trading close or diactivate to clear");
+				MessageBox.Show("You are trading close or deactivate to clear");
 				return;
 			}
 
@@ -635,18 +633,39 @@ namespace NinjaTrader.Strategy
 			}
 		}
 
-		private void DeActivate()
+		private void Enable50Profit_Changed(object sender, EventArgs e)
 		{
-			_statusLabel.Text = "Not Active";
-			_statusLabel.BackColor = _disabledColor;
-			_isActive = false;
+			if (_currentRayContainer == null&&_checkBoxEnablePartialProfit.Checked)
+			{
+				MessageBox.Show("Please select ray and Long or Short mode first");
+				_checkBoxEnablePartialProfit.Checked = false;
+				_checkBoxEnablePartialProfit.Update();
+				return;
+			}
+			if (_checkBoxEnablePartialProfit.Checked)
+			{
+				_partialMsgLabel.Text = "50% TP Enabled";
+				_partialMsgLabel.BackColor = _enabledColor;
+				// ReSharper disable once UseNullPropagation
+				if (_currentRayContainer != null) _currentRayContainer.PartialProfitEnable();
+			}
+			else
+			{
+				_partialMsgLabel.Text = "50% TP Disabled";
+				_partialMsgLabel.BackColor = _disabledColor;
+				// ReSharper disable once UseNullPropagation
+				if (_currentRayContainer != null) _currentRayContainer.ParialProfitDisable();
+			}
+			UpdateForms();
 		}
 
-		#endregion
+		private void vShowForm_Panel(object s, EventArgs e)
+		{
+			_mainPanel.Visible = !_mainPanel.Visible;
+			SetCstButtonText();
+		}
 
-		#region FORM 01 - VS2010 Controls Initialization
-
-		private void _checkBoxEnableTrailStopChnged(object sender, EventArgs e)
+		private void _checkBoxEnableTrailStopChanged(object sender, EventArgs e)
 		{
 			isDTS = _checkBoxEnableTrailStop.Checked;
 			if (_checkBoxEnableTrailStop.Checked)
@@ -661,33 +680,26 @@ namespace NinjaTrader.Strategy
 			}
 		}
 
-		private void _checkBoxMoveSlEntryLineCheckChange(object sender, EventArgs e)
+		private void _radioBoxEntryLine(object sender, EventArgs e)
 		{
-			if (_checkBoxMoveSlEntryLine.Checked)
-			{
-				_stopToEnterMsgLabel.Text = "STE";
-				_stopToEnterMsgLabel.BackColor = _enabledColor;
-			}
-			else
-			{
-				_stopToEnterMsgLabel.Text = "STE NOT";
-				_stopToEnterMsgLabel.BackColor = _disabledColor;
-			}
-			
+			SteMassageEnable();
+		}
+		private void _radioBoxPartialProfit(object sender, EventArgs e)
+		{
+			SteMassageEnable();
 		}
 
-		private void button_CloseHalfPositionClick(object sender, EventArgs e)
+		private void SteMassageEnable()
 		{
-			if (Position.MarketPosition == MarketPosition.Flat)
-			{
-				MessageBox.Show("No open position to close hulf");
-				return;
-			}
-			if (Position.MarketPosition == MarketPosition.Short)
-				ExitShort(_currentOrder.Quantity/2);
-			else
-				ExitLong(_currentOrder.Quantity/2);
+			_stopToEnterMsgLabel.Text = "STE";
+			_stopToEnterMsgLabel.BackColor = _enabledColor;
 		}
+
+		private void _radioBoxNone(object sender, EventArgs e)
+		{
+			_stopToEnterMsgLabel.Text = "STE NOT";
+			_stopToEnterMsgLabel.BackColor = _disabledColor; 
+        }	
 
 		private void button_ClosePositionClick(object sender, EventArgs e)
 		{
@@ -703,7 +715,7 @@ namespace NinjaTrader.Strategy
 				ExitLong();
 		}
 
-		#endregion
+
 		#region VS2010 Controls Paste
 		private GroupBox _groupBoxStatusWindow;
 		private GroupBox _groupBoxQuantity;
@@ -735,8 +747,6 @@ namespace NinjaTrader.Strategy
 		private Label _label3;
 		private NumericUpDown _numericUpDownPipTicksToActivate;
 		private Button _buttonManualMoveStop;
-		private CheckBox _checkBoxMoveSlPartialProfitLine;
-		private CheckBox _checkBoxMoveSlEntryLine;
 		private GroupBox _groupBox1;
 		private Label _label4;
 		private NumericUpDown _numericUpDownBarEntry;
@@ -748,6 +758,11 @@ namespace NinjaTrader.Strategy
 		private Label _label9;
 		private Label _label8;
 		private Button _buttonClearSelection;
+
+		private RadioButton _radioButtonNone;
+		private RadioButton _radioButtonEntryLine;
+		private RadioButton _radioButtonPartialProfit;
+
 		private void VS2010_InitializeComponent_Form()
 		{
 			#region Creating FormVariables 
@@ -786,11 +801,9 @@ namespace NinjaTrader.Strategy
 			_checkBoxEnableTrailStop = new CheckBox();
 			_numericUpDownStopLevelTicks = new NumericUpDown();
 			_groupBoxStopToEntry = new GroupBox();
-			_checkBoxMoveSlPartialProfitLine = new CheckBox();
 			_label3 = new Label();
 			_numericUpDownPipTicksToActivate = new NumericUpDown();
 			_buttonManualMoveStop = new Button();
-			_checkBoxMoveSlEntryLine = new CheckBox();
 			_groupBoxMode = new GroupBox();
 			_label1 = new Label();
 			_buttonMakeHorizontalLine = new Button();
@@ -1127,7 +1140,7 @@ namespace NinjaTrader.Strategy
 			_groupBox1.Controls.Add(_label4);
 			_groupBox1.Controls.Add(_numericUpDownBarEntry);
 			_groupBox1.Controls.Add(_checkBoxEnableBarEntry);
-			_groupBox1.Location = new Point(6, 704);
+			_groupBox1.Location = new Point(6, 722);
 			_groupBox1.Margin = new Padding(2);
 			_groupBox1.Name = "groupBox1";
 			_groupBox1.Padding = new Padding(2);
@@ -1189,7 +1202,7 @@ namespace NinjaTrader.Strategy
 			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStopAlert);
 			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStop);
 			_groupBoxTrailStop.Controls.Add(_numericUpDownStopLevelTicks);
-			_groupBoxTrailStop.Location = new Point(6, 579);
+			_groupBoxTrailStop.Location = new Point(6, 597);
 			_groupBoxTrailStop.Margin = new Padding(2);
 			_groupBoxTrailStop.Name = "groupBox_TrailStop";
 			_groupBoxTrailStop.Padding = new Padding(2);
@@ -1293,7 +1306,7 @@ namespace NinjaTrader.Strategy
 			_checkBoxEnableTrailStop.TabIndex = 4;
 			_checkBoxEnableTrailStop.Text = "Enable";
 			_checkBoxEnableTrailStop.UseVisualStyleBackColor = true;
-			_checkBoxEnableTrailStop.CheckedChanged += _checkBoxEnableTrailStopChnged;
+			_checkBoxEnableTrailStop.CheckedChanged += _checkBoxEnableTrailStopChanged;
 			// 
 			// numericUpDown_StopLevelTicks
 			// 
@@ -1305,34 +1318,56 @@ namespace NinjaTrader.Strategy
 			_numericUpDownStopLevelTicks.TabIndex = 13;
 			_numericUpDownStopLevelTicks.TextAlign = HorizontalAlignment.Center;
 			_numericUpDownStopLevelTicks.Value = new decimal(new[] { 9, 0, 0, 0});
+			_radioButtonNone = new RadioButton();
+			_radioButtonEntryLine = new RadioButton();
+			_radioButtonPartialProfit = new RadioButton();
+
+			_radioButtonNone.AutoSize = true;
+			_radioButtonNone.Location = new Point(5, 74);
+			_radioButtonNone.Name = "radioButtonNone";
+			_radioButtonNone.Size = new Size(51, 17);
+			_radioButtonNone.TabIndex = 0;
+			_radioButtonNone.TabStop = true;
+			_radioButtonNone.Text = "None";
+			_radioButtonNone.UseVisualStyleBackColor = true;
+			_radioButtonNone.CheckedChanged += _radioBoxNone;
+
+			_radioButtonEntryLine.AutoSize = true;
+			_radioButtonEntryLine.Location = new Point(5, 92);
+			_radioButtonEntryLine.Name = "radioButtonEntryLine";
+			_radioButtonEntryLine.Size = new Size(72, 17);
+			_radioButtonEntryLine.TabIndex = 1;
+			_radioButtonEntryLine.TabStop = true;
+			_radioButtonEntryLine.Text = "Entry Line";
+			_radioButtonEntryLine.UseVisualStyleBackColor = true;
+			_radioButtonEntryLine.CheckedChanged += _radioBoxEntryLine;
+
+			_radioButtonPartialProfit.AutoSize = true;
+			_radioButtonPartialProfit.Location = new Point(5, 110);
+			_radioButtonPartialProfit.Name = "radioButtonPartialProfit";
+			_radioButtonPartialProfit.Size = new Size(81, 17);
+			_radioButtonPartialProfit.TabIndex = 2;
+			_radioButtonPartialProfit.TabStop = true;
+			_radioButtonPartialProfit.Text = "Partial Profit";
+			_radioButtonPartialProfit.UseVisualStyleBackColor = true;
+			_radioButtonPartialProfit.CheckedChanged += _radioBoxPartialProfit;
 			// 
 			// groupBox_StopToEntry
 			// 
-			_groupBoxStopToEntry.Controls.Add(_checkBoxMoveSlPartialProfitLine);
+			_groupBoxStopToEntry.Controls.Add(_radioButtonNone);
+			_groupBoxStopToEntry.Controls.Add(_radioButtonEntryLine);
+			_groupBoxStopToEntry.Controls.Add(_radioButtonPartialProfit);
 			_groupBoxStopToEntry.Controls.Add(_label3);
 			_groupBoxStopToEntry.Controls.Add(_numericUpDownPipTicksToActivate);
 			_groupBoxStopToEntry.Controls.Add(_buttonManualMoveStop);
-			_groupBoxStopToEntry.Controls.Add(_checkBoxMoveSlEntryLine);
 			_groupBoxStopToEntry.Location = new Point(6, 466);
 			_groupBoxStopToEntry.Margin = new Padding(2);
 			_groupBoxStopToEntry.Name = "groupBox_StopToEntry";
 			_groupBoxStopToEntry.Padding = new Padding(2);
-			_groupBoxStopToEntry.Size = new Size(154, 109);
+			_groupBoxStopToEntry.Size = new Size(154, 127);
 			_groupBoxStopToEntry.TabIndex = 2;
 			_groupBoxStopToEntry.TabStop = false;
 			_groupBoxStopToEntry.Text = "Stop to Entry/Partial Profit";
-			// 
-			// checkBox_MoveSL_PartialProfitLine
-			// 
-			_checkBoxMoveSlPartialProfitLine.AutoSize = true;
-			_checkBoxMoveSlPartialProfitLine.Font = new Font("Microsoft Sans Serif", 8.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			_checkBoxMoveSlPartialProfitLine.Location = new Point(8, 89);
-			_checkBoxMoveSlPartialProfitLine.Margin = new Padding(2);
-			_checkBoxMoveSlPartialProfitLine.Name = "checkBox_MoveSL_PartialProfitLine";
-			_checkBoxMoveSlPartialProfitLine.Size = new Size(149, 17);
-			_checkBoxMoveSlPartialProfitLine.TabIndex = 6;
-			_checkBoxMoveSlPartialProfitLine.Text = "Move Stop to Partial Profit";
-			_checkBoxMoveSlPartialProfitLine.UseVisualStyleBackColor = true;
 			// 
 			// label3
 			// 
@@ -1369,19 +1404,7 @@ namespace NinjaTrader.Strategy
 			_buttonManualMoveStop.TabIndex = 3;
 			_buttonManualMoveStop.Text = "MANUAL MOVE STOP";
 			_buttonManualMoveStop.UseVisualStyleBackColor = false;
-			// 
-			// checkBox_MoveSL_EntryLine
-			// 
-			_checkBoxMoveSlEntryLine.AutoSize = true;
-			_checkBoxMoveSlEntryLine.Font = new Font("Microsoft Sans Serif", 8.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			_checkBoxMoveSlEntryLine.Location = new Point(8, 73);
-			_checkBoxMoveSlEntryLine.Margin = new Padding(2);
-			_checkBoxMoveSlEntryLine.Name = "checkBox_MoveSL_EntryLine";
-			_checkBoxMoveSlEntryLine.Size = new Size(140, 17);
-			_checkBoxMoveSlEntryLine.TabIndex = 3;
-			_checkBoxMoveSlEntryLine.Text = "Move Stop to Entry Line";
-			_checkBoxMoveSlEntryLine.UseVisualStyleBackColor = true;
-			_checkBoxMoveSlEntryLine.CheckedChanged += _checkBoxMoveSlEntryLineCheckChange;
+			_buttonManualMoveStop.Click += ButtonManualMoveStopOnClick;
 			// 
 			// groupBox_Mode
 			// 
@@ -1423,7 +1446,7 @@ namespace NinjaTrader.Strategy
 			_buttonMakeHorizontalLine.TabIndex = 4;
 			_buttonMakeHorizontalLine.Text = "MAKE HORIZONTAL";
 			_buttonMakeHorizontalLine.UseVisualStyleBackColor = false;
-			_buttonMakeHorizontalLine.Click += button_MakeHorizizontalLine_Click;
+			_buttonMakeHorizontalLine.Click += button_MakeHorizontalLine_Click;
 
 			//Some text to put here
 			_groupBoxStatusWindow.ResumeLayout(false);
@@ -1449,6 +1472,48 @@ namespace NinjaTrader.Strategy
 
 			ChartControl.Controls.Add(_mainPanel);
 		}
+
+		private void ButtonManualMoveStopOnClick(object sender, EventArgs e)
+		{
+			if (_currentRayContainer == null)
+			{
+				MessageBox.Show("First you should create lines to move to them");
+				return;
+			}
+			if(_radioButtonNone.Checked)
+			{
+				MessageBox.Show("You should select the Partial Profit or Entry Line");
+				return;
+			}
+			 if (_radioButtonEntryLine.Checked)
+			{
+				MoveStopLineTo(_currentRayContainer.EntryRay);
+			}
+			else
+			 {
+				 if (!_checkBoxEnablePartialProfit.Checked)
+				{
+					MessageBox.Show("You should first activate Partial Profit to move to it");
+					return;
+				}
+				 MoveStopLineTo(_currentRayContainer.HalfCloseRay);
+			 }
+			_radioButtonNone.Checked = true;
+			UpdateForms();
+		}
+
+		private void MoveStopLineTo(IRay ray)
+		{
+			_currentRayContainer.StopRay.Anchor1BarsAgo = ray.Anchor1BarsAgo;
+			_currentRayContainer.StopRay.Anchor2BarsAgo = ray.Anchor2BarsAgo;
+
+			_currentRayContainer.StopRay.Anchor1Y = ray.Anchor1Y;
+			_currentRayContainer.StopRay.Anchor2Y = ray.Anchor2Y;
+
+			_currentRayContainer.Update();
+		}
+
+
 
 		private Button _buttonActivate;
 
