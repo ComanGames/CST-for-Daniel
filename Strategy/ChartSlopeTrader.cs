@@ -206,15 +206,13 @@ namespace NinjaTrader.Strategy
 
 		private readonly Color _enabledColor = Color.ForestGreen;
 		private readonly Color _disabledColor = Color.LightCoral;
-		private bool _showPanel;
 		private bool _isActive;
-		private bool _isCountingRr;
-		private bool _isRrAfter;
+		// ReSharper disable once FieldCanBeMadeReadOnly.Local
 		private string _pleaseSelectRay = "Please Select Ray";
 		private RayContainer _currentRayContainer;
-		private IOrder _currentOrder;
+		// ReSharper disable once FieldCanBeMadeReadOnly.Local
+		private IOrder _currentOrder = null;
 		private bool _doBigger;
-		private bool isDTS;
 
 		public const uint LimitShift = 10;
 
@@ -262,6 +260,8 @@ namespace NinjaTrader.Strategy
 				UpdateOrders();
 				if (!_radioButtonNone.Checked)
 					CheckSte();
+				if(_checkBoxEnableTrailStop.Checked)
+					UpdateDTS();
 			}
 		}
 
@@ -533,8 +533,7 @@ namespace NinjaTrader.Strategy
 			// ReSharper disable once UseNullPropagation
 			if(_currentRayContainer!=null)
 				_currentRayContainer.Clear();
-			_currentRayContainer = new RayContainer(MarketPosition.Long, ray, this, _checkBoxEnablePartialProfit.Checked,
-				isDTS);
+			_currentRayContainer = new RayContainer(MarketPosition.Long, ray, this, _checkBoxEnablePartialProfit.Checked, _checkBoxEnableTrailStop.Checked );
 			_currentRayContainer.Update();
 			UpdateForms();
 		}
@@ -553,10 +552,10 @@ namespace NinjaTrader.Strategy
 				return;
 			}
 			//We are creating container for a rays
+			// ReSharper disable once UseNullPropagation
 			if(_currentRayContainer!=null)
 				_currentRayContainer.Clear();
-			_currentRayContainer = new RayContainer(MarketPosition.Short, ray, this, _checkBoxEnablePartialProfit.Checked,
-				isDTS);
+			_currentRayContainer = new RayContainer(MarketPosition.Short, ray, this, _checkBoxEnablePartialProfit.Checked,_checkBoxEnableTrailStop.Checked );
 			_currentRayContainer.Update();
 			UpdateForms();
 
@@ -567,13 +566,7 @@ namespace NinjaTrader.Strategy
 			IRay ray;
 			if (GetSelectedRay(out ray))
 			{
-				double averagePrice = RayContainer.RayPrice(ray);
-				ChartRay rayToUse = ray as ChartRay;
-				if (rayToUse != null)
-				{
-					rayToUse.StartY = averagePrice;
-					rayToUse.EndY = averagePrice;
-				}
+				MakeRayHorizontal(ray);
 				// ReSharper disable once UseNullPropagation
 				if(_currentRayContainer!=null)
 					_currentRayContainer.Update();
@@ -582,6 +575,17 @@ namespace NinjaTrader.Strategy
 			else
 				MassageIfLineNotSelected();
 
+		}
+
+		private void MakeRayHorizontal(IRay ray)
+		{
+			double averagePrice = RayContainer.RayPrice(ray);
+			ChartRay rayToUse = ray as ChartRay;
+			if (rayToUse != null)
+			{
+				rayToUse.StartY = averagePrice;
+				rayToUse.EndY = averagePrice;
+			}
 		}
 
 		private void _buttonActivateClick(object sender, EventArgs e)
@@ -625,6 +629,9 @@ namespace NinjaTrader.Strategy
 
 			if (_currentRayContainer != null)
 			{
+				_checkBoxEnableTrailStop.Checked = false;
+				_checkBoxEnablePartialProfit.Checked = false;
+				_radioButtonNone.Checked = true;
 				_currentRayContainer.Clear();
 				_currentRayContainer = null;
 				if (_isActive)
@@ -667,17 +674,91 @@ namespace NinjaTrader.Strategy
 
 		private void _checkBoxEnableTrailStopChanged(object sender, EventArgs e)
 		{
-			isDTS = _checkBoxEnableTrailStop.Checked;
+			if (_currentRayContainer == null)
+			{
+				if( _checkBoxEnableTrailStop.Checked)
+				{
+					MessageBox.Show("First you should create the Rays to get Dynamic Trailing Stop");
+					_checkBoxEnableTrailStop.Checked = false;
+				}
+				return;
+			}
 			if (_checkBoxEnableTrailStop.Checked)
 			{
 				_dynamicTrailingStopMsgLabel.Text = "DTS";
 				_dynamicTrailingStopMsgLabel.BackColor = _enabledColor;
+				EnableDTS();
+				UpdateDTS();
 			}
 			else
 			{
+				DisableDTS();
 				_dynamicTrailingStopMsgLabel.Text = "DTS NOT";
 				_dynamicTrailingStopMsgLabel.BackColor = _disabledColor;
 			}
+		}
+
+		// ReSharper disable once InconsistentNaming
+		private void DisableDTS()
+		{
+			//Disabling the radio buttons
+			_radioButtonNone.Enabled = true;
+			_radioButtonEntryLine.Enabled = false;
+			_radioButtonPartialProfit.Enabled = false;
+		}
+
+		// ReSharper disable once InconsistentNaming
+		private void EnableDTS()
+		{
+			if (!_radioButtonNone.Checked)
+			{
+				MessageBox.Show("You stop to entry active. So i will turn off it for you");
+				_radioButtonNone.Checked = true;
+			}
+			//Disabling the radio buttons
+			_radioButtonNone.Enabled = true;
+			_radioButtonEntryLine.Enabled = true;
+			_radioButtonPartialProfit.Enabled = true;
+			//Making over Stop Line Horizontal Locked and turned off
+			MakeRayHorizontal(_currentRayContainer.StopRay);
+			_currentRayContainer.StopRay.Locked = true;
+		}
+
+		// ReSharper disable once InconsistentNaming
+		private void UpdateDTS()
+		{
+			if (_currentRayContainer == null)
+			{
+				_checkBoxEnableTrailStop.Checked = false;
+				MessageBox.Show("We have no rays to trade with first you need to made Rays for DTS");
+				_checkBoxEnableTrailStopAlert.Checked = false;
+				return;
+			}
+
+			//The price what we should got as result price
+			double resultPricePosition;
+			if (_currentRayContainer.PositionType == MarketPosition.Long)
+			{
+				resultPricePosition = Low[0];
+				for (int i = 0; i <=_numericUpDownSwingIndicatorBars.Value ; i++)
+				{
+					resultPricePosition = Math.Min(resultPricePosition, Low[i]);
+				}
+			}
+			//Here we got for short
+			else
+			{
+				resultPricePosition = High[0];
+				for (int i = 0; i < _numericUpDownSwingIndicatorBars.Value; i++)
+				{
+					resultPricePosition = Math.Max(resultPricePosition, High[i]);
+				}
+
+			}
+			//Putting over stop ray on over ray 
+			_currentRayContainer.StopRay.Anchor1Y = resultPricePosition;
+			_currentRayContainer.StopRay.Anchor2Y = resultPricePosition;
+			UpdateForms();
 		}
 
 		private void _radioBoxEntryLine(object sender, EventArgs e)
@@ -1516,7 +1597,6 @@ namespace NinjaTrader.Strategy
 
 
 		private Button _buttonActivate;
-
 		#endregion
 	}
 }
