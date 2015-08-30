@@ -46,17 +46,18 @@ namespace NinjaTrader.Strategy
 		private readonly int _textShift = 10;
 		public bool ClosingHalf;
 		private readonly Strategy _strategy;
+		private readonly double _distance;
 		
 
 		public RayContainer(MarketPosition marketPosition, IRay ray, Strategy strategy, bool isCloseHalf, bool isDts)
 		{
-			//Initialization over variables
+			//Initialization global variables
 			_strategy = strategy;
 			PositionType = marketPosition;
-			ClosingHalf = isCloseHalf;
+			_distance = TicksTarget*strategy.TickSize;
 
-			double distance = TicksTarget*strategy.TickSize;
-
+			//Set some local variables
+			double distance = _distance;
 			//Setting  up down if we are in the long
 			if (marketPosition == MarketPosition.Long)
 				distance *= -1;
@@ -78,21 +79,23 @@ namespace NinjaTrader.Strategy
 
 			if (isDts)
 			{
-				double position = RayPrice(StopRay);
-				StopRay.Anchor1Y = position;
-				StopRay.Anchor2Y = position;
+				MadeStopRayHorizontal();
+			}
+			if (isCloseHalf)
+			{
+				PartialProfitEnable();
 			}
 			//Unlocking those rays if want to make them clear
 			EntryRay.Locked = false;
 			StopRay.Locked = false;
 			ProfitTargetRay.Locked = false;
-			if (isCloseHalf)
-			{
-				HalfCloseRay = strategy.DrawRay("HalfClose", false,
-					ray.Anchor1BarsAgo, ray.Anchor1Y - distance*.6, ray.Anchor2BarsAgo, ray.Anchor2Y - distance*.6,
-					HcColor, DashStyle.Dash, 2);
-				HalfCloseRay.Locked = false;
-			}
+		}
+
+		private void MadeStopRayHorizontal()
+		{
+			double position = RayPrice(StopRay);
+			StopRay.Anchor1Y = position;
+			StopRay.Anchor2Y = position;
 		}
 
 		public void Update()
@@ -158,11 +161,548 @@ namespace NinjaTrader.Strategy
 				_strategy.RemoveDrawObject(_hcDot);
 			}
 		}
+
+		public void PartialProfitEnable()
+		{
+			ClosingHalf = true;
+			//Distance we will count from profit Ray
+			double d = _distance;
+			if (PositionType == MarketPosition.Long)
+				d *= -1;
+
+			//Drawing the ray
+			HalfCloseRay = _strategy.DrawRay("HalfClose", false,
+				ProfitTargetRay.Anchor1BarsAgo, ProfitTargetRay.Anchor1Y + d*.6, ProfitTargetRay.Anchor2BarsAgo,
+				ProfitTargetRay.Anchor2Y + d*.6,
+				HcColor, DashStyle.Dash, 2);
+
+			HalfCloseRay.Locked = false;
+		}
+
+		public void ParialProfitDisable()
+		{
+			ClosingHalf = false;
+			//Remove the ray if we got it already
+			if (HalfCloseRay != null)
+				_strategy.RemoveDrawObject(HalfCloseRay);
+		}
 	}
 
 	[Description("Trade Slope Lines")]
 	public class ChartSlopeTrader : Strategy
 	{
+
+
+		#region Variables
+		private ToolStrip _myToolStrip;
+		private ToolStripButton _myTsButton;
+		private ToolStripSeparator _myTsSeparator;
+
+		private readonly Color _enabledColor = Color.ForestGreen;
+		private readonly Color _disabledColor = Color.LightCoral;
+		private bool _showPanel;
+		private bool _isActive;
+		private bool _isCountingRr;
+		private bool _isRrAfter;
+		private string _pleaseSelectRay = "Please Select Ray";
+		private RayContainer _currentRayContainer;
+		private IOrder _currentOrder;
+		private bool _doBigger;
+		private bool isDTS;
+
+		public const uint LimitShift = 10;
+
+		#endregion
+
+		protected override void Initialize()
+		{
+			CalculateOnBarClose = false;
+			Enabled = true;
+		}
+
+		protected override void OnStartUp()
+		{
+			// Initialize Forms
+			VS2010_InitializeComponent_Form();
+			ChartControl.ChartPanel.MouseMove += MouseMoveAction;
+			// Add Toolbar Button
+			ButtonToThetop();
+		}
+
+		protected override void OnTermination()
+		{
+			if (_mainPanel != null)
+			{
+				// Remove and Dispose
+				ChartControl.Controls.Remove(_mainPanel);
+				_mainPanel.Dispose();
+				_mainPanel = null;
+			}
+
+			// Remove My Toolstrip Button
+			if ((_myToolStrip != null) && (_myTsButton != null))
+			{
+				_myToolStrip.Items.Remove(_myTsButton);
+				_myToolStrip.Items.Remove(_myTsSeparator);
+			}
+
+			_myToolStrip = null;
+			_myTsButton = null;
+			_myTsSeparator = null;
+		}
+
+		protected override void OnBarUpdate()
+		{
+			UpdateGraphics();
+			if (_isActive && _currentRayContainer != null)
+				UpdateOrders();
+		}
+
+		private void UpdateOrders()
+		{
+			if (Position.MarketPosition == MarketPosition.Flat)
+			{
+				if (_currentRayContainer.PositionType == MarketPosition.Short)
+					OrderTriggerEnterShortStop();
+				else
+					OrderTriggerEnterLongStop();
+			}
+			else
+			{
+
+				if (!_currentRayContainer.ClosingHalf)
+				{
+					if (_currentRayContainer.PositionType == MarketPosition.Short)
+					{
+						if (Close[0] < RayContainer.RayPrice(_currentRayContainer.HalfCloseRay))
+						{
+							ExitShort(_currentOrder.Quantity/2);
+							_currentRayContainer.ClosingHalf = false;
+						}
+					}
+					else
+					{
+						if (Close[0] > RayContainer.RayPrice(_currentRayContainer.HalfCloseRay))
+						{
+							ExitLong(_currentOrder.Quantity/2);
+							_currentRayContainer.ClosingHalf = false;
+						}
+					}
+				}
+				else
+				{
+//				    SetSLandTP();
+				}
+			}
+		}
+
+		private void OrderTriggerEnterLongStop()
+		{
+			int quantity = (int) _numericUpDownQuantity.Value;
+			double stopPrice = RayContainer.RayPrice(_currentRayContainer.EntryRay);
+				EnterLongStop(quantity,stopPrice);
+		}
+
+		private void OrderTriggerEnterShortStop()
+		{
+			int quantity = (int) _numericUpDownQuantity.Value;
+			double stopPrice = RayContainer.RayPrice(_currentRayContainer.EntryRay);
+			EnterShortStop(quantity, stopPrice);
+		}
+
+
+		private void SetSLandTp()
+		{
+			IRay entryRay = _currentRayContainer.EntryRay;
+			if (_currentRayContainer.PositionType == MarketPosition.Long)
+			{
+				if (Close[0] > RayContainer.RayPrice(entryRay))
+					SetTrailStop("TrailingStopCST", CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer.ProfitTargetRay), true);
+				else
+					SetStopLoss("StopLossCST", CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer.StopRay), false);
+			}
+			else
+			{
+				if (Close[0] < RayContainer.RayPrice(entryRay))
+					SetTrailStop("TrailingStopCST", CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer.ProfitTargetRay), true);
+				else
+					SetStopLoss("StopLossCST", CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer.StopRay), false);
+			}
+		}
+
+		private void UpdateGraphics()
+		{
+			if (_currentRayContainer != null)
+			{
+				UpdateRR();
+				_currentRayContainer.Update();
+			}
+			
+		}
+
+		private void UpdateRR()
+		{
+			//Todo: write those RR functionlity
+
+			if (_currentRayContainer!=null)
+			{
+				double risk;
+				double reward;
+				if (MarketPosition.Flat==Position.MarketPosition)
+				{
+					risk =
+						Math.Abs(RayContainer.RayPrice(_currentRayContainer.EntryRay) -
+						         RayContainer.RayPrice(_currentRayContainer.StopRay));
+					reward = 
+						Math.Abs(RayContainer.RayPrice(_currentRayContainer.ProfitTargetRay) -
+						         RayContainer.RayPrice(_currentRayContainer.EntryRay));
+
+				}
+				else
+				{
+					//After we are in a LONG or SHORT position, looking for a profit:
+					//Formula(after):
+					risk =
+						Math.Abs(Close[0]-
+						         RayContainer.RayPrice(_currentRayContainer.StopRay));
+
+					reward=
+						Math.Abs(Close[0]-
+						         RayContainer.RayPrice(_currentRayContainer.ProfitTargetRay));
+				}
+
+				if (Math.Abs(reward) > 0.00000000001)
+					_rrLabel.Text = Math.Round((reward/risk),2).ToString(CultureInfo.InvariantCulture);
+				//For 50% RR 
+				if (_currentRayContainer.ClosingHalf)
+				{
+					if (MarketPosition.Flat == Position.MarketPosition)
+					{
+						risk =
+							Math.Abs(RayContainer.RayPrice(_currentRayContainer.EntryRay) -
+							         RayContainer.RayPrice(_currentRayContainer.StopRay));
+						reward =
+							Math.Abs(RayContainer.RayPrice(_currentRayContainer.HalfCloseRay) -
+							         RayContainer.RayPrice(_currentRayContainer.EntryRay));
+
+					}
+					else
+					{
+						//After we are in a LONG or SHORT position, looking for a profit:
+						//Formula(after):
+						risk =
+							Math.Abs(Close[0] -
+							         RayContainer.RayPrice(_currentRayContainer.StopRay));
+
+						reward =
+							Math.Abs(Close[0] -
+							         RayContainer.RayPrice(_currentRayContainer.HalfCloseRay));
+					}
+					if (Math.Abs(reward) > 0.000000001)
+						_rr50Label.Text = Math.Round((reward / risk), 2).ToString();
+
+				}
+
+			}
+			//Todo: Write the 50% RR funinality 
+			//R: R 50 % indicator: Same as above but when 50 % Partial Take Profit line is enabled use
+			//[50 % Partial Take Profit] Line in the calculation. That way we can see R:R for both lines
+
+		}
+
+		#region Misc Routines
+
+		public bool GetSelectedRay(out IRay ray)
+		{
+			ray = null;
+			//Instance for over result 
+			IRay result = null;
+			//Getting Reflection black door open
+			Type chartControlType = typeof (ChartControl);
+			//Now we want to get access to  secreat field 
+			FieldInfo fi = chartControlType.GetField("selectedObject", BindingFlags.NonPublic | BindingFlags.Instance);
+			//Now if rely got this one 
+			if (fi != null)
+			{
+				//if we free from null error
+				if (ChartControl != null && fi.GetValue(ChartControl) != null)
+				{
+					//Getting the instance of the object
+					object clickedObject = fi.GetValue(ChartControl);
+					//Checking if ti posible to convert
+					if (clickedObject is IRay)
+					{
+						ray = (IRay) clickedObject;
+						return true;
+						//Converting 
+					}
+				}
+			}
+			return false;
+		}
+
+		private void ButtonToThetop()
+		{
+			Control[] tscontrol = ChartControl.Controls.Find("tsrTool", false);
+
+			if (tscontrol.Length > 0)
+			{
+				_myTsButton = new ToolStripButton();
+				_myTsButton.Click += vShowForm_Panel;
+
+				_myTsSeparator = new ToolStripSeparator();
+
+				_myToolStrip = (ToolStrip)tscontrol[0];
+				_myToolStrip.Items.Add(_myTsSeparator);
+				_myToolStrip.Items.Add(_myTsButton);
+
+				_myTsButton.ForeColor = Color.Black;
+				SetCstButtonText();
+			}
+		}
+
+		private void SetCstButtonText()
+		{
+			if (_mainPanel.Visible)
+			{
+				_myTsButton.Text = "Close CST Control";
+				_myTsButton.BackColor =_disabledColor;
+			}
+			else 
+			{
+				_myTsButton.Text = "Show CST Control";
+				_myTsButton.BackColor = _enabledColor;
+			}
+		}
+
+		private void UpdateForms()
+		{
+			if(_doBigger)
+				ChartControl.Size = new Size(ChartControl.Size.Width + 1, ChartControl.Size.Height);
+			else
+				ChartControl.Size = new Size(ChartControl.Size.Width - 1, ChartControl.Size.Height);
+			_doBigger = !_doBigger;
+			ChartControl.Update();
+		}
+		private static void MassageIfLineNotSelected()
+		{
+			MessageBox.Show("Please select line First");
+		}
+
+
+		private void vShowForm_Panel(object s, EventArgs e)
+		{
+			_mainPanel.Visible = !_mainPanel.Visible;
+			SetCstButtonText();
+		}
+
+		private void MouseMoveAction(object sender, MouseEventArgs e)
+		{
+			UpdateGraphics();
+		}
+
+		#endregion
+
+		#region Click Events FORM 01
+
+		private void button_ManualLong_Click(object sender, EventArgs e)
+		{
+			IRay ray;
+			if (!GetSelectedRay(out ray))
+			{
+				MessageBox.Show(_pleaseSelectRay);
+				return;
+			}
+			if (_isActive)
+			{
+				MessageBox.Show("We already active we can change position while we Active");
+				return;
+			}
+			//We crating the continer for the rays
+			if(_currentRayContainer!=null)
+				_currentRayContainer.Clear();
+			_currentRayContainer = new RayContainer(MarketPosition.Long, ray, this, _checkBoxEnablePartialProfit.Checked,
+				isDTS);
+			_currentRayContainer.Update();
+			UpdateForms();
+		}
+
+		private void button_ManualShort_Click(object sender, EventArgs e)
+		{
+			IRay ray;
+			if (!GetSelectedRay(out ray))
+			{
+				MessageBox.Show(_pleaseSelectRay);
+				return;
+			}
+			if (_isActive)
+			{
+				MessageBox.Show("We already active we can change position while we Active");
+				return;
+			}
+			//We are creating container for a rays
+			if(_currentRayContainer!=null)
+				_currentRayContainer.Clear();
+			_currentRayContainer = new RayContainer(MarketPosition.Short, ray, this, _checkBoxEnablePartialProfit.Checked,
+				isDTS);
+			_currentRayContainer.Update();
+			UpdateForms();
+
+		}
+
+		private void button_MakeHorizizontalLine_Click(object sender, EventArgs e)
+		{
+			IRay ray;
+			if (GetSelectedRay(out ray))
+			{
+				double averagePrice = RayContainer.RayPrice(ray);
+				ChartRay rayToUse = ray as ChartRay;
+				rayToUse.StartY = averagePrice;
+				rayToUse.EndY = averagePrice;
+				if(_currentRayContainer!=null)
+					_currentRayContainer.Update();
+				UpdateForms();
+			}
+			else
+				MassageIfLineNotSelected();
+
+		}
+
+		private void Enable50Profit_Changed(object sender, EventArgs e)
+		{
+			if (_currentRayContainer == null)
+			{
+				MessageBox.Show("Please select ray and Long or Short mode first");
+				return;
+			}
+			//Todo:make logic to to Particl Close 
+			if (_checkBoxEnablePartialProfit.Checked)
+			{
+				_partialMsgLabel.Text = "50% TP Enabled";
+				_partialMsgLabel.BackColor = _enabledColor;
+				_currentRayContainer.PartialProfitEnable();
+			}
+			else
+			{
+				_partialMsgLabel.Text = "50% TP Disabled";
+				_partialMsgLabel.BackColor = _disabledColor;
+				_currentRayContainer.ParialProfitDisable();
+			}
+		}
+
+		private void _buttonActivateClick(object sender, EventArgs e)
+		{
+			if (_currentRayContainer == null)
+			{
+				MessageBox.Show("You don't have lines to trade with");
+				return;
+			}
+			if (!_isActive)
+			{
+				_isActive = true;
+				_statusLabel.BackColor = _enabledColor;
+				if (_currentRayContainer.PositionType == MarketPosition.Long)
+				{
+					_statusLabel.Text = "Active: Long Position";
+				}
+				else
+				{
+					_statusLabel.Text = "Active: Short Position";
+				}
+			}
+			else
+			{
+				MessageBox.Show("You already active");
+			}
+		}
+
+		private void _buttonClearSelection_Click(object sender, EventArgs e)
+		{
+			if (MarketPosition.Flat != Position.MarketPosition)
+			{
+				MessageBox.Show("You are trading close or diactivate to clear");
+				return;
+			}
+
+			if (_currentRayContainer != null)
+			{
+				_currentRayContainer.Clear();
+				_currentRayContainer = null;
+				if (_isActive)
+					DeActivate();
+				UpdateForms();
+			}
+		}
+
+		private void DeActivate()
+		{
+			_statusLabel.Text = "Not Active";
+			_statusLabel.BackColor = _disabledColor;
+			_isActive = false;
+		}
+
+		#endregion
+
+		#region FORM 01 - VS2010 Controls Initialization
+
+		private void _checkBoxEnableTrailStopChnged(object sender, EventArgs e)
+		{
+			isDTS = _checkBoxEnableTrailStop.Checked;
+			if (_checkBoxEnableTrailStop.Checked)
+			{
+				_dynamicTrailingStopMsgLabel.Text = "DTS";
+				_dynamicTrailingStopMsgLabel.BackColor = _enabledColor;
+			}
+			else
+			{
+				_dynamicTrailingStopMsgLabel.Text = "DTS NOT";
+				_dynamicTrailingStopMsgLabel.BackColor = _disabledColor;
+			}
+		}
+
+		private void _checkBoxMoveSlEntryLineCheckChange(object sender, EventArgs e)
+		{
+			if (_checkBoxMoveSlEntryLine.Checked)
+			{
+				_stopToEnterMsgLabel.Text = "STE";
+				_stopToEnterMsgLabel.BackColor = _enabledColor;
+			}
+			else
+			{
+				_stopToEnterMsgLabel.Text = "STE NOT";
+				_stopToEnterMsgLabel.BackColor = _disabledColor;
+			}
+			
+		}
+
+		private void button_CloseHalfPositionClick(object sender, EventArgs e)
+		{
+			if (Position.MarketPosition == MarketPosition.Flat)
+			{
+				MessageBox.Show("No open position to close hulf");
+				return;
+			}
+			if (Position.MarketPosition == MarketPosition.Short)
+				ExitShort(_currentOrder.Quantity/2);
+			else
+				ExitLong(_currentOrder.Quantity/2);
+		}
+
+		private void button_ClosePositionClick(object sender, EventArgs e)
+		{
+			if (Position.MarketPosition == MarketPosition.Flat)
+			{
+				MessageBox.Show("We have nothing to close");
+				return;
+			}
+			if(MarketPosition.Short==Position.MarketPosition)
+				ExitShort();
+
+			if(MarketPosition.Long==Position.MarketPosition)
+				ExitLong();
+		}
+
+		#endregion
 		#region VS2010 Controls Paste
 		private GroupBox _groupBoxStatusWindow;
 		private GroupBox _groupBoxQuantity;
@@ -912,510 +1452,5 @@ namespace NinjaTrader.Strategy
 		private Button _buttonActivate;
 
 		#endregion
-
-		#region Variables
-		private ToolStrip _myToolStrip;
-		private ToolStripButton _myTsButton;
-		private ToolStripSeparator _myTsSeparator;
-
-		private readonly Color _enabledColor = Color.ForestGreen;
-		private readonly Color _disabledColor = Color.LightCoral;
-		private bool _showPanel;
-		private bool _isActive;
-		private bool _isCountingRr;
-		private bool _isRrAfter;
-		private string _pleaseSelectRay = "Please Select Ray";
-		private RayContainer _currentRayContainer;
-		private IOrder _currentOrder;
-		private bool _doBigger;
-		private bool isDTS;
-
-		public const uint LimitShift = 10;
-
-		#endregion
-
-		protected override void Initialize()
-		{
-			CalculateOnBarClose = false;
-			Enabled = true;
-		}
-
-		protected override void OnStartUp()
-		{
-			// Initialize Forms
-			VS2010_InitializeComponent_Form();
-			ChartControl.ChartPanel.MouseMove += MouseMoveAction;
-			// Add Toolbar Button
-			ButtonToThetop();
-		}
-
-		protected override void OnTermination()
-		{
-			if (_mainPanel != null)
-			{
-				// Remove and Dispose
-				ChartControl.Controls.Remove(_mainPanel);
-				_mainPanel.Dispose();
-				_mainPanel = null;
-			}
-
-			// Remove My Toolstrip Button
-			if ((_myToolStrip != null) && (_myTsButton != null))
-			{
-				_myToolStrip.Items.Remove(_myTsButton);
-				_myToolStrip.Items.Remove(_myTsSeparator);
-			}
-
-			_myToolStrip = null;
-			_myTsButton = null;
-			_myTsSeparator = null;
-		}
-
-		protected override void OnBarUpdate()
-		{
-			UpdateGraphics();
-			if (_isActive && _currentRayContainer != null)
-				UpdateOrders();
-		}
-
-		private void UpdateOrders()
-		{
-			if (Position.MarketPosition == MarketPosition.Flat)
-			{
-				if (_currentRayContainer.PositionType == MarketPosition.Short)
-					OrderTriggerEnterShortStop();
-				else
-					OrderTriggerEnterLongStop();
-			}
-			else
-			{
-
-				if (!_currentRayContainer.ClosingHalf)
-				{
-					if (_currentRayContainer.PositionType == MarketPosition.Short)
-					{
-						if (Close[0] < RayContainer.RayPrice(_currentRayContainer.HalfCloseRay))
-						{
-							ExitShort(_currentOrder.Quantity/2);
-							_currentRayContainer.ClosingHalf = false;
-						}
-					}
-					else
-					{
-						if (Close[0] > RayContainer.RayPrice(_currentRayContainer.HalfCloseRay))
-						{
-							ExitLong(_currentOrder.Quantity/2);
-							_currentRayContainer.ClosingHalf = false;
-						}
-					}
-				}
-				else
-				{
-//				    SetSLandTP();
-				}
-			}
-		}
-
-		private void OrderTriggerEnterLongStop()
-		{
-			int quantity = (int) _numericUpDownQuantity.Value;
-			double stopPrice = RayContainer.RayPrice(_currentRayContainer.EntryRay);
-				EnterLongStop(quantity,stopPrice);
-		}
-
-		private void OrderTriggerEnterShortStop()
-		{
-			int quantity = (int) _numericUpDownQuantity.Value;
-			double stopPrice = RayContainer.RayPrice(_currentRayContainer.EntryRay);
-			EnterShortStop(quantity, stopPrice);
-		}
-
-
-		private void SetSLandTp()
-		{
-			IRay entryRay = _currentRayContainer.EntryRay;
-			if (_currentRayContainer.PositionType == MarketPosition.Long)
-			{
-				if (Close[0] > RayContainer.RayPrice(entryRay))
-					SetTrailStop("TrailingStopCST", CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer.ProfitTargetRay), true);
-				else
-					SetStopLoss("StopLossCST", CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer.StopRay), false);
-			}
-			else
-			{
-				if (Close[0] < RayContainer.RayPrice(entryRay))
-					SetTrailStop("TrailingStopCST", CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer.ProfitTargetRay), true);
-				else
-					SetStopLoss("StopLossCST", CalculationMode.Price, RayContainer.RayPrice(_currentRayContainer.StopRay), false);
-			}
-		}
-
-		private void UpdateGraphics()
-		{
-			if (_currentRayContainer != null)
-			{
-				UpdateRR();
-				_currentRayContainer.Update();
-			}
-			
-		}
-
-		private void UpdateRR()
-		{
-			//Todo: write those RR functionlity
-
-			if (_currentRayContainer!=null)
-			{
-				double risk;
-				double reward;
-				if (MarketPosition.Flat==Position.MarketPosition)
-				{
-					risk =
-						Math.Abs(RayContainer.RayPrice(_currentRayContainer.EntryRay) -
-						         RayContainer.RayPrice(_currentRayContainer.StopRay));
-					reward = 
-						Math.Abs(RayContainer.RayPrice(_currentRayContainer.ProfitTargetRay) -
-						         RayContainer.RayPrice(_currentRayContainer.EntryRay));
-
-				}
-				else
-				{
-					//After we are in a LONG or SHORT position, looking for a profit:
-					//Formula(after):
-					risk =
-						Math.Abs(Close[0]-
-						         RayContainer.RayPrice(_currentRayContainer.StopRay));
-
-					reward=
-						Math.Abs(Close[0]-
-						         RayContainer.RayPrice(_currentRayContainer.ProfitTargetRay));
-				}
-
-				if (Math.Abs(reward) > 0.00000000001)
-					_rrLabel.Text = Math.Round((reward/risk),2).ToString(CultureInfo.InvariantCulture);
-				//For 50% RR 
-				if (_currentRayContainer.ClosingHalf)
-				{
-					if (MarketPosition.Flat == Position.MarketPosition)
-					{
-						risk =
-							Math.Abs(RayContainer.RayPrice(_currentRayContainer.EntryRay) -
-							         RayContainer.RayPrice(_currentRayContainer.StopRay));
-						reward =
-							Math.Abs(RayContainer.RayPrice(_currentRayContainer.HalfCloseRay) -
-							         RayContainer.RayPrice(_currentRayContainer.EntryRay));
-
-					}
-					else
-					{
-						//After we are in a LONG or SHORT position, looking for a profit:
-						//Formula(after):
-						risk =
-							Math.Abs(Close[0] -
-							         RayContainer.RayPrice(_currentRayContainer.StopRay));
-
-						reward =
-							Math.Abs(Close[0] -
-							         RayContainer.RayPrice(_currentRayContainer.HalfCloseRay));
-					}
-					if (Math.Abs(reward) > 0.000000001)
-						_rr50Label.Text = Math.Round((reward / risk), 2).ToString();
-
-				}
-
-			}
-			//Todo: Write the 50% RR funinality 
-			//R: R 50 % indicator: Same as above but when 50 % Partial Take Profit line is enabled use
-			//[50 % Partial Take Profit] Line in the calculation. That way we can see R:R for both lines
-
-		}
-
-		#region Misc Routines
-
-		public bool GetSelectedRay(out IRay ray)
-		{
-			ray = null;
-			//Instance for over result 
-			IRay result = null;
-			//Getting Reflection black door open
-			Type chartControlType = typeof (ChartControl);
-			//Now we want to get access to  secreat field 
-			FieldInfo fi = chartControlType.GetField("selectedObject", BindingFlags.NonPublic | BindingFlags.Instance);
-			//Now if rely got this one 
-			if (fi != null)
-			{
-				//if we free from null error
-				if (ChartControl != null && fi.GetValue(ChartControl) != null)
-				{
-					//Getting the instance of the object
-					object clickedObject = fi.GetValue(ChartControl);
-					//Checking if ti posible to convert
-					if (clickedObject is IRay)
-					{
-						ray = (IRay) clickedObject;
-						return true;
-						//Converting 
-					}
-				}
-			}
-			return false;
-		}
-
-		private void ButtonToThetop()
-		{
-			Control[] tscontrol = ChartControl.Controls.Find("tsrTool", false);
-
-			if (tscontrol.Length > 0)
-			{
-				_myTsButton = new ToolStripButton();
-				_myTsButton.Click += vShowForm_Panel;
-
-				_myTsSeparator = new ToolStripSeparator();
-
-				_myToolStrip = (ToolStrip)tscontrol[0];
-				_myToolStrip.Items.Add(_myTsSeparator);
-				_myToolStrip.Items.Add(_myTsButton);
-
-				_myTsButton.ForeColor = Color.Black;
-				SetCstButtonText();
-			}
-		}
-
-		private void SetCstButtonText()
-		{
-			if (_mainPanel.Visible)
-			{
-				_myTsButton.Text = "Close CST Control";
-				_myTsButton.BackColor =_disabledColor;
-			}
-			else 
-			{
-				_myTsButton.Text = "Show CST Control";
-				_myTsButton.BackColor = _enabledColor;
-			}
-		}
-
-		private void UpdateForms()
-		{
-			if(_doBigger)
-				ChartControl.Size = new Size(ChartControl.Size.Width + 1, ChartControl.Size.Height);
-			else
-				ChartControl.Size = new Size(ChartControl.Size.Width - 1, ChartControl.Size.Height);
-			_doBigger = !_doBigger;
-			ChartControl.Update();
-		}
-		private static void MassageIfLineNotSelected()
-		{
-			MessageBox.Show("Please select line First");
-		}
-
-
-		private void vShowForm_Panel(object s, EventArgs e)
-		{
-			_mainPanel.Visible = !_mainPanel.Visible;
-			SetCstButtonText();
-		}
-
-		private void MouseMoveAction(object sender, MouseEventArgs e)
-		{
-			UpdateGraphics();
-		}
-
-		#endregion
-
-		#region Click Events FORM 01
-
-		private void button_ManualLong_Click(object sender, EventArgs e)
-		{
-			IRay ray;
-			if (!GetSelectedRay(out ray))
-			{
-				MessageBox.Show(_pleaseSelectRay);
-				return;
-			}
-			if (_isActive)
-			{
-				MessageBox.Show("We already active we can change position while we Active");
-				return;
-			}
-			//We crating the continer for the rays
-			if(_currentRayContainer!=null)
-				_currentRayContainer.Clear();
-			_currentRayContainer = new RayContainer(MarketPosition.Long, ray, this, _checkBoxEnablePartialProfit.Checked,
-				isDTS);
-			_currentRayContainer.Update();
-			UpdateForms();
-		}
-
-		private void button_ManualShort_Click(object sender, EventArgs e)
-		{
-			IRay ray;
-			if (!GetSelectedRay(out ray))
-			{
-				MessageBox.Show(_pleaseSelectRay);
-				return;
-			}
-			if (_isActive)
-			{
-				MessageBox.Show("We already active we can change position while we Active");
-				return;
-			}
-			//We are creating container for a rays
-			if(_currentRayContainer!=null)
-				_currentRayContainer.Clear();
-			_currentRayContainer = new RayContainer(MarketPosition.Short, ray, this, _checkBoxEnablePartialProfit.Checked,
-				isDTS);
-			_currentRayContainer.Update();
-			UpdateForms();
-
-		}
-
-		private void button_MakeHorizizontalLine_Click(object sender, EventArgs e)
-		{
-			IRay ray;
-			if (GetSelectedRay(out ray))
-			{
-				double averagePrice = RayContainer.RayPrice(ray);
-				ChartRay rayToUse = ray as ChartRay;
-				rayToUse.StartY = averagePrice;
-				rayToUse.EndY = averagePrice;
-				if(_currentRayContainer!=null)
-					_currentRayContainer.Update();
-				UpdateForms();
-			}
-			else
-				MassageIfLineNotSelected();
-
-		}
-
-		private void Enable50Profit_Changed(object sender, EventArgs e)
-		{
-			//Todo:make logic to to Particl Close 
-			if (_checkBoxEnablePartialProfit.Checked)
-			{
-				_partialMsgLabel.Text = "50% TP Enabled";
-				_partialMsgLabel.BackColor = _enabledColor;
-			}
-			else
-			{
-				_partialMsgLabel.Text = "50% TP Disabled";
-				_partialMsgLabel.BackColor = _disabledColor;
-			}
-		}
-
-		private void _buttonActivateClick(object sender, EventArgs e)
-		{
-			if (_currentRayContainer == null)
-			{
-				MessageBox.Show("You don't have lines to trade with");
-				return;
-			}
-			if (!_isActive)
-			{
-				_isActive = true;
-				_statusLabel.BackColor = _enabledColor;
-				if (_currentRayContainer.PositionType == MarketPosition.Long)
-				{
-					_statusLabel.Text = "Active: Long Position";
-				}
-				else
-				{
-					_statusLabel.Text = "Active: Short Position";
-				}
-			}
-			else
-			{
-				MessageBox.Show("You already active");
-			}
-		}
-
-		private void _buttonClearSelection_Click(object sender, EventArgs e)
-		{
-			if (MarketPosition.Flat != Position.MarketPosition)
-			{
-				MessageBox.Show("You are trading close or diactivate to clear");
-				return;
-			}
-
-			if (_currentRayContainer != null)
-			{
-				_currentRayContainer.Clear();
-				_currentRayContainer = null;
-				if (_isActive)
-					DeActivate();
-				UpdateForms();
-			}
-		}
-
-		private void DeActivate()
-		{
-			_statusLabel.Text = "Not Active";
-			_statusLabel.BackColor = _disabledColor;
-			_isActive = false;
-		}
-
-		#endregion
-
-		#region FORM 01 - VS2010 Controls Initialization
-
-		private void _checkBoxEnableTrailStopChnged(object sender, EventArgs e)
-		{
-			isDTS = _checkBoxEnableTrailStop.Checked;
-			if (_checkBoxEnableTrailStop.Checked)
-			{
-				_dynamicTrailingStopMsgLabel.Text = "DTS";
-				_dynamicTrailingStopMsgLabel.BackColor = _enabledColor;
-			}
-			else
-			{
-				_dynamicTrailingStopMsgLabel.Text = "DTS NOT";
-				_dynamicTrailingStopMsgLabel.BackColor = _disabledColor;
-			}
-		}
-
-		private void _checkBoxMoveSlEntryLineCheckChange(object sender, EventArgs e)
-		{
-			if (_checkBoxMoveSlEntryLine.Checked)
-			{
-				_stopToEnterMsgLabel.Text = "STE";
-				_stopToEnterMsgLabel.BackColor = _enabledColor;
-			}
-			else
-			{
-				_stopToEnterMsgLabel.Text = "STE NOT";
-				_stopToEnterMsgLabel.BackColor = _disabledColor;
-			}
-			
-		}
-
-		private void button_CloseHalfPositionClick(object sender, EventArgs e)
-		{
-			if (Position.MarketPosition == MarketPosition.Flat)
-			{
-				MessageBox.Show("No open position to close hulf");
-				return;
-			}
-			if (Position.MarketPosition == MarketPosition.Short)
-				ExitShort(_currentOrder.Quantity/2);
-			else
-				ExitLong(_currentOrder.Quantity/2);
-		}
-
-		private void button_ClosePositionClick(object sender, EventArgs e)
-		{
-			if (Position.MarketPosition == MarketPosition.Flat)
-			{
-				MessageBox.Show("We have nothing to close");
-				return;
-			}
-			if(MarketPosition.Short==Position.MarketPosition)
-				ExitShort();
-
-			if(MarketPosition.Long==Position.MarketPosition)
-				ExitLong();
-		}
-
-		#endregion
-
 	}
 }
