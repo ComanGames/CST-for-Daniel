@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Globalization;
+using System.Net.Mail;
 using System.Reflection;
 using System.Windows.Forms;
 using NinjaTrader.Cbi;
@@ -89,6 +90,47 @@ namespace NinjaTrader.Strategy
 			EntryRay.Locked = false;
 			StopRay.Locked = false;
 			ProfitTargetRay.Locked = false;
+		}
+		public class OutlookDotComMail
+		{
+			private readonly string _sender;
+			private readonly string _password;
+
+			public OutlookDotComMail(string sender, string password)
+			{
+				_sender = sender;
+				_password = password;
+			}
+
+			public void SendMail(string recipient, string subject, string message)
+			{
+				SmtpClient client = new SmtpClient("smtp-mail.outlook.com")
+				{
+					Port = 587,
+					DeliveryMethod = SmtpDeliveryMethod.Network,
+					UseDefaultCredentials = false
+				};
+
+				System.Net.NetworkCredential credentials =
+					new System.Net.NetworkCredential(_sender, _password);
+				client.EnableSsl = true;
+				client.Credentials = credentials;
+
+				try
+				{
+					var mail = new MailMessage(_sender.Trim(), recipient.Trim())
+					{
+						Subject = subject,
+						Body = message
+					};
+					client.Send(mail);
+				}
+				catch (Exception ex)
+				{
+					MessageBox.Show(ex.Message);
+					throw;
+				}
+			}
 		}
 
 		private void MadeStopRayHorizontal()
@@ -367,6 +409,9 @@ namespace NinjaTrader.Strategy
 		}
 		private void UpdateRr()
 		{
+			//=====================================================================
+			//								For  RR 
+			//=====================================================================
 			if (_currentRayContainer!=null)
 			{
 				double risk;
@@ -520,7 +565,7 @@ namespace NinjaTrader.Strategy
 		private void button_ManualLong_Click(object sender, EventArgs e)
 		{
 			IRay ray;
-			if (!GetSelectedRay(out ray))
+			if (!GetSelectedRay(out ray)||!ray.UserDrawn)
 			{
 				MessageBox.Show(_pleaseSelectRay);
 				return;
@@ -659,6 +704,7 @@ namespace NinjaTrader.Strategy
 			}
 			else
 			{
+				_checkBoxEnablePartialProfitAlert.Checked = false;
 				_partialMsgLabel.Text = "50% TP Disabled";
 				_partialMsgLabel.BackColor = _disabledColor;
 				// ReSharper disable once UseNullPropagation
@@ -693,6 +739,7 @@ namespace NinjaTrader.Strategy
 			}
 			else
 			{
+				_checkBoxEnableTrailStopAlert.Checked = false;
 				DisableDTS();
 				_dynamicTrailingStopMsgLabel.Text = "DTS NOT";
 				_dynamicTrailingStopMsgLabel.BackColor = _disabledColor;
@@ -831,7 +878,7 @@ namespace NinjaTrader.Strategy
 		private CheckBox _checkBoxEnableTrailStop;
 		private NumericUpDown _numericUpDownSwingIndicatorBars;
 		private NumericUpDown _numericUpDownStopLevelTicks;
-		private NumericUpDown _numericUpDownHOrizontalTicks;
+		private NumericUpDown _numericUpDownHorizontalTicks;
 		private Label _label1;
 		private Label _rr50NameLabel;
 		private Label _partialMsgLabel;
@@ -892,7 +939,7 @@ namespace NinjaTrader.Strategy
 			_numericUpDownStopLevelTicks = new NumericUpDown();
 			_checkBoxEnableTrailStopAlert = new CheckBox();
 			_checkBoxEnableTrailStop = new CheckBox();
-			_numericUpDownHOrizontalTicks = new NumericUpDown();
+			_numericUpDownHorizontalTicks = new NumericUpDown();
 			_groupBoxStopToEntry = new GroupBox();
 			_label3 = new Label();
 			_numericUpDownPipTicksToActivate = new NumericUpDown();
@@ -912,7 +959,7 @@ namespace NinjaTrader.Strategy
 			_groupBoxTrailStop.SuspendLayout();
 			((ISupportInitialize) (_numericUpDownSwingIndicatorBars)).BeginInit();
 			((ISupportInitialize) (_numericUpDownStopLevelTicks)).BeginInit();
-			((ISupportInitialize) (_numericUpDownHOrizontalTicks)).BeginInit();
+			((ISupportInitialize) (_numericUpDownHorizontalTicks)).BeginInit();
 			_groupBoxStopToEntry.SuspendLayout();
 			((ISupportInitialize) (_numericUpDownPipTicksToActivate)).BeginInit();
 			_groupBoxMode.SuspendLayout();
@@ -1105,6 +1152,7 @@ namespace NinjaTrader.Strategy
 			_checkBoxEnablePartialProfitAlert.TabIndex = 3;
 			_checkBoxEnablePartialProfitAlert.Text = "Enable Email Alert";
 			_checkBoxEnablePartialProfitAlert.UseVisualStyleBackColor = true;
+			_checkBoxEnablePartialProfitAlert.CheckedChanged += _checkBoxEnablePartialProfitAlert_CheckedChanged;
 			// 
 			// button_CloseHalfPosition
 			// 
@@ -1258,20 +1306,12 @@ namespace NinjaTrader.Strategy
 			// 
 			_numericUpDownBarEntry.Location = new Point(116, 18);
 			_numericUpDownBarEntry.Margin = new Padding(2);
-			_numericUpDownBarEntry.Maximum = new decimal(new[] {
-				99,
-				0,
-				0,
-				0});
+			_numericUpDownBarEntry.Maximum = new decimal(new[] { 99, 0, 0, 0});
 			_numericUpDownBarEntry.Name = "numericUpDown_BarEntry";
 			_numericUpDownBarEntry.Size = new Size(34, 20);
 			_numericUpDownBarEntry.TabIndex = 12;
 			_numericUpDownBarEntry.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownBarEntry.Value = new decimal(new[] {
-				1,
-				0,
-				0,
-				0});
+			_numericUpDownBarEntry.Value = new decimal(new[] { 1, 0, 0, 0});
 			// 
 			// checkBox_EnableBarEntry
 			// 
@@ -1294,7 +1334,7 @@ namespace NinjaTrader.Strategy
 			_groupBoxTrailStop.Controls.Add(_numericUpDownStopLevelTicks);
 			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStopAlert);
 			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStop);
-			_groupBoxTrailStop.Controls.Add(_numericUpDownHOrizontalTicks);
+			_groupBoxTrailStop.Controls.Add(_numericUpDownHorizontalTicks);
 			_groupBoxTrailStop.Location = new Point(6, 597);
 			_groupBoxTrailStop.Margin = new Padding(2);
 			_groupBoxTrailStop.Name = "groupBox_TrailStop";
@@ -1388,6 +1428,7 @@ namespace NinjaTrader.Strategy
 			_checkBoxEnableTrailStopAlert.TabIndex = 5;
 			_checkBoxEnableTrailStopAlert.Text = "Enable Email Alert";
 			_checkBoxEnableTrailStopAlert.UseVisualStyleBackColor = true;
+			_checkBoxEnableTrailStopAlert.CheckedChanged += _checkBoxEnableTrailStopAlert_CheckedChanged;  
 			// 
 			// checkBox_EnableTrailStop
 			// 
@@ -1403,14 +1444,14 @@ namespace NinjaTrader.Strategy
 			// 
 			// numericUpDown_StopLevelTicks
 			// 
-			_numericUpDownHOrizontalTicks.Location = new Point(118, 99);
-			_numericUpDownHOrizontalTicks.Margin = new Padding(2);
-			_numericUpDownHOrizontalTicks.Maximum = new decimal(new[] { 99, 0, 0, 0});
-			_numericUpDownHOrizontalTicks.Name = "numericUpDown_StopLevelTicks";
-			_numericUpDownHOrizontalTicks.Size = new Size(34, 20);
-			_numericUpDownHOrizontalTicks.TabIndex = 13;
-			_numericUpDownHOrizontalTicks.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownHOrizontalTicks.Value = new decimal(new[] { 9, 0, 0, 0});
+			_numericUpDownHorizontalTicks.Location = new Point(118, 99);
+			_numericUpDownHorizontalTicks.Margin = new Padding(2);
+			_numericUpDownHorizontalTicks.Maximum = new decimal(new[] { 99, 0, 0, 0});
+			_numericUpDownHorizontalTicks.Name = "numericUpDown_StopLevelTicks";
+			_numericUpDownHorizontalTicks.Size = new Size(34, 20);
+			_numericUpDownHorizontalTicks.TabIndex = 13;
+			_numericUpDownHorizontalTicks.TextAlign = HorizontalAlignment.Center;
+			_numericUpDownHorizontalTicks.Value = new decimal(new[] { 9, 0, 0, 0});
 			_radioButtonNone = new RadioButton();
 			_radioButtonEntryLine = new RadioButton();
 			_radioButtonPartialProfit = new RadioButton();
@@ -1557,7 +1598,7 @@ namespace NinjaTrader.Strategy
 			_groupBoxTrailStop.PerformLayout();
 			((ISupportInitialize)(_numericUpDownSwingIndicatorBars)).EndInit();
 			((ISupportInitialize)(_numericUpDownStopLevelTicks)).EndInit();
-			((ISupportInitialize)(_numericUpDownHOrizontalTicks)).EndInit();
+			((ISupportInitialize)(_numericUpDownHorizontalTicks)).EndInit();
 			_groupBoxStopToEntry.ResumeLayout(false);
 			_groupBoxStopToEntry.PerformLayout();
 			((ISupportInitialize)(_numericUpDownPipTicksToActivate)).EndInit();
@@ -1565,6 +1606,30 @@ namespace NinjaTrader.Strategy
 			_groupBoxMode.PerformLayout();
 
 			ChartControl.Controls.Add(_mainPanel);
+		}
+
+		private void _checkBoxEnableTrailStopAlert_CheckedChanged(object sender, EventArgs e)
+		{
+			if (!_checkBoxEnableTrailStop.Checked && _checkBoxEnableTrailStopAlert.Checked)
+			{
+				MessageBox.Show("First you should turn on the DTS");
+				_checkBoxEnableTrailStopAlert.Checked = false;
+				return;
+			}
+
+			_dynamicTrailingStopMsgLabel.Text = _checkBoxEnableTrailStopAlert.Checked ? "DTS + E" : "DTS";
+		}
+
+		private void _checkBoxEnablePartialProfitAlert_CheckedChanged(object sender, EventArgs e)
+		{
+			if (!_checkBoxEnablePartialProfit.Checked &&_checkBoxEnablePartialProfitAlert.Checked)
+			{
+				MessageBox.Show("First you should turn on the Partial Profit ");
+				_checkBoxEnablePartialProfitAlert.Checked = false;
+				return;
+			}
+			_partialMsgLabel.Text = _checkBoxEnablePartialProfitAlert.Checked ? "50% TP Enabled + E" : "50% TP Enabled";
+			UpdateForms();
 		}
 
 		private void ButtonManualMoveStopOnClick(object sender, EventArgs e)
