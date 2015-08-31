@@ -361,6 +361,7 @@ namespace NinjaTrader.Strategy
 			{
 				UpdateRr();
 				_currentRayContainer.Update();
+				UpdateForms();
 			}
 			
 		}
@@ -703,8 +704,13 @@ namespace NinjaTrader.Strategy
 		{
 			//Disabling the radio buttons
 			_radioButtonNone.Enabled = true;
-			_radioButtonEntryLine.Enabled = false;
-			_radioButtonPartialProfit.Enabled = false;
+			_radioButtonEntryLine.Enabled = true;
+			_radioButtonPartialProfit.Enabled = true;
+			_radioButtonNone.Checked = true;
+
+			//Removing lock from stopRay if we got it 
+			if (_currentRayContainer != null) _currentRayContainer.StopRay.Locked = false;
+
 		}
 
 		// ReSharper disable once InconsistentNaming
@@ -716,12 +722,17 @@ namespace NinjaTrader.Strategy
 				_radioButtonNone.Checked = true;
 			}
 			//Disabling the radio buttons
-			_radioButtonNone.Enabled = true;
-			_radioButtonEntryLine.Enabled = true;
-			_radioButtonPartialProfit.Enabled = true;
+			_radioButtonNone.Enabled = false;
+			_radioButtonEntryLine.Enabled = false;
+			_radioButtonPartialProfit.Enabled = false;
+
 			//Making over Stop Line Horizontal Locked and turned off
 			MakeRayHorizontal(_currentRayContainer.StopRay);
 			_currentRayContainer.StopRay.Locked = true;
+			//Full update to see the changes what we made
+			UpdateDTS();
+			_currentRayContainer.Update();
+			UpdateForms();
 		}
 
 		// ReSharper disable once InconsistentNaming
@@ -744,6 +755,7 @@ namespace NinjaTrader.Strategy
 				{
 					resultPricePosition = Math.Min(resultPricePosition, Low[i]);
 				}
+				resultPricePosition -= TickSize*(double) _numericUpDownStopLevelTicks.Value;
 			}
 			//Here we got for short
 			else
@@ -753,7 +765,7 @@ namespace NinjaTrader.Strategy
 				{
 					resultPricePosition = Math.Max(resultPricePosition, High[i]);
 				}
-
+				resultPricePosition += TickSize*(double) _numericUpDownStopLevelTicks.Value;
 			}
 			//Putting over stop ray on over ray 
 			_currentRayContainer.StopRay.Anchor1Y = resultPricePosition;
@@ -818,8 +830,8 @@ namespace NinjaTrader.Strategy
 		private CheckBox _checkBoxEnableTrailStopAlert;
 		private CheckBox _checkBoxEnableTrailStop;
 		private NumericUpDown _numericUpDownSwingIndicatorBars;
-		private NumericUpDown _numericUpDownHCrossTicks;
 		private NumericUpDown _numericUpDownStopLevelTicks;
+		private NumericUpDown _numericUpDownHOrizontalTicks;
 		private Label _label1;
 		private Label _rr50NameLabel;
 		private Label _partialMsgLabel;
@@ -877,10 +889,10 @@ namespace NinjaTrader.Strategy
 			_label8 = new Label();
 			_label7 = new Label();
 			_numericUpDownSwingIndicatorBars = new NumericUpDown();
-			_numericUpDownHCrossTicks = new NumericUpDown();
+			_numericUpDownStopLevelTicks = new NumericUpDown();
 			_checkBoxEnableTrailStopAlert = new CheckBox();
 			_checkBoxEnableTrailStop = new CheckBox();
-			_numericUpDownStopLevelTicks = new NumericUpDown();
+			_numericUpDownHOrizontalTicks = new NumericUpDown();
 			_groupBoxStopToEntry = new GroupBox();
 			_label3 = new Label();
 			_numericUpDownPipTicksToActivate = new NumericUpDown();
@@ -899,8 +911,8 @@ namespace NinjaTrader.Strategy
 			((ISupportInitialize) (_numericUpDownBarEntry)).BeginInit();
 			_groupBoxTrailStop.SuspendLayout();
 			((ISupportInitialize) (_numericUpDownSwingIndicatorBars)).BeginInit();
-			((ISupportInitialize) (_numericUpDownHCrossTicks)).BeginInit();
 			((ISupportInitialize) (_numericUpDownStopLevelTicks)).BeginInit();
+			((ISupportInitialize) (_numericUpDownHOrizontalTicks)).BeginInit();
 			_groupBoxStopToEntry.SuspendLayout();
 			((ISupportInitialize) (_numericUpDownPipTicksToActivate)).BeginInit();
 			_groupBoxMode.SuspendLayout();
@@ -1279,10 +1291,10 @@ namespace NinjaTrader.Strategy
 			_groupBoxTrailStop.Controls.Add(_label8);
 			_groupBoxTrailStop.Controls.Add(_label7);
 			_groupBoxTrailStop.Controls.Add(_numericUpDownSwingIndicatorBars);
-			_groupBoxTrailStop.Controls.Add(_numericUpDownHCrossTicks);
+			_groupBoxTrailStop.Controls.Add(_numericUpDownStopLevelTicks);
 			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStopAlert);
 			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStop);
-			_groupBoxTrailStop.Controls.Add(_numericUpDownStopLevelTicks);
+			_groupBoxTrailStop.Controls.Add(_numericUpDownHOrizontalTicks);
 			_groupBoxTrailStop.Location = new Point(6, 597);
 			_groupBoxTrailStop.Margin = new Padding(2);
 			_groupBoxTrailStop.Name = "groupBox_TrailStop";
@@ -1349,18 +1361,18 @@ namespace NinjaTrader.Strategy
 			// 
 			// numericUpDown_HorizonCrossTicks
 			// 
-			_numericUpDownHCrossTicks.Location = new Point(118, 78);
-			_numericUpDownHCrossTicks.Margin = new Padding(2);
-			_numericUpDownHCrossTicks.Maximum = new decimal(new[] {
+			_numericUpDownStopLevelTicks.Location = new Point(118, 78);
+			_numericUpDownStopLevelTicks.Margin = new Padding(2);
+			_numericUpDownStopLevelTicks.Maximum = new decimal(new[] {
 				99,
 				0,
 				0,
 				0});
-			_numericUpDownHCrossTicks.Name = "numericUpDown_HorizCrossTicks";
-			_numericUpDownHCrossTicks.Size = new Size(34, 20);
-			_numericUpDownHCrossTicks.TabIndex = 12;
-			_numericUpDownHCrossTicks.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownHCrossTicks.Value = new decimal(new[] {
+			_numericUpDownStopLevelTicks.Name = "numericUpDown_HorizCrossTicks";
+			_numericUpDownStopLevelTicks.Size = new Size(34, 20);
+			_numericUpDownStopLevelTicks.TabIndex = 12;
+			_numericUpDownStopLevelTicks.TextAlign = HorizontalAlignment.Center;
+			_numericUpDownStopLevelTicks.Value = new decimal(new[] {
 				4,
 				0,
 				0,
@@ -1391,14 +1403,14 @@ namespace NinjaTrader.Strategy
 			// 
 			// numericUpDown_StopLevelTicks
 			// 
-			_numericUpDownStopLevelTicks.Location = new Point(118, 99);
-			_numericUpDownStopLevelTicks.Margin = new Padding(2);
-			_numericUpDownStopLevelTicks.Maximum = new decimal(new[] { 99, 0, 0, 0});
-			_numericUpDownStopLevelTicks.Name = "numericUpDown_StopLevelTicks";
-			_numericUpDownStopLevelTicks.Size = new Size(34, 20);
-			_numericUpDownStopLevelTicks.TabIndex = 13;
-			_numericUpDownStopLevelTicks.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownStopLevelTicks.Value = new decimal(new[] { 9, 0, 0, 0});
+			_numericUpDownHOrizontalTicks.Location = new Point(118, 99);
+			_numericUpDownHOrizontalTicks.Margin = new Padding(2);
+			_numericUpDownHOrizontalTicks.Maximum = new decimal(new[] { 99, 0, 0, 0});
+			_numericUpDownHOrizontalTicks.Name = "numericUpDown_StopLevelTicks";
+			_numericUpDownHOrizontalTicks.Size = new Size(34, 20);
+			_numericUpDownHOrizontalTicks.TabIndex = 13;
+			_numericUpDownHOrizontalTicks.TextAlign = HorizontalAlignment.Center;
+			_numericUpDownHOrizontalTicks.Value = new decimal(new[] { 9, 0, 0, 0});
 			_radioButtonNone = new RadioButton();
 			_radioButtonEntryLine = new RadioButton();
 			_radioButtonPartialProfit = new RadioButton();
@@ -1412,6 +1424,7 @@ namespace NinjaTrader.Strategy
 			_radioButtonNone.Text = "None";
 			_radioButtonNone.UseVisualStyleBackColor = true;
 			_radioButtonNone.CheckedChanged += _radioBoxNone;
+			_radioButtonNone.Checked = true;
 
 			_radioButtonEntryLine.AutoSize = true;
 			_radioButtonEntryLine.Location = new Point(5, 92);
@@ -1543,8 +1556,8 @@ namespace NinjaTrader.Strategy
 			_groupBoxTrailStop.ResumeLayout(false);
 			_groupBoxTrailStop.PerformLayout();
 			((ISupportInitialize)(_numericUpDownSwingIndicatorBars)).EndInit();
-			((ISupportInitialize)(_numericUpDownHCrossTicks)).EndInit();
 			((ISupportInitialize)(_numericUpDownStopLevelTicks)).EndInit();
+			((ISupportInitialize)(_numericUpDownHOrizontalTicks)).EndInit();
 			_groupBoxStopToEntry.ResumeLayout(false);
 			_groupBoxStopToEntry.PerformLayout();
 			((ISupportInitialize)(_numericUpDownPipTicksToActivate)).EndInit();
