@@ -47,18 +47,20 @@ namespace NinjaTrader.Strategy
 		private readonly int _textShift = 10;
 		public bool ClosingHalf;
 		private readonly Strategy _strategy;
-		private readonly double _distance;
-		
+		public readonly double Distance;
+
 
 		public RayContainer(MarketPosition marketPosition, IRay ray, Strategy strategy, bool isCloseHalf, bool isDts)
 		{
 			//Initialization global variables
 			_strategy = strategy;
 			PositionType = marketPosition;
-			_distance = TicksTarget*strategy.TickSize;
+			double min = GetMinPrice();
+			double max = GetMaxPrice();
+			Distance = (max - min)/2;
 
 			//Set some local variables
-			double distance = _distance;
+			double distance = Distance;
 			//Setting  up down if we are in the long
 			if (marketPosition == MarketPosition.Long)
 				distance *= -1;
@@ -67,7 +69,7 @@ namespace NinjaTrader.Strategy
 			OriginRay = ray;
 
 			EntryRay = strategy.DrawRay("Enter", false,
-				ray.Anchor1BarsAgo, ray.Anchor1Y - distance*.3, ray.Anchor2BarsAgo, ray.Anchor2Y - distance*.3,
+				ray.Anchor1BarsAgo, ray.Anchor1Y - (distance*.3), ray.Anchor2BarsAgo, ray.Anchor2Y - (distance*.3),
 				EnterColor, DashStyle.Solid, 2);
 
 			StopRay = strategy.DrawRay("Stop", false,
@@ -91,6 +93,26 @@ namespace NinjaTrader.Strategy
 			StopRay.Locked = false;
 			ProfitTargetRay.Locked = false;
 		}
+
+		private double GetMaxPrice()
+		{
+			int length = Math.Min(20, _strategy.High.Count);
+			double result = _strategy.Close[0];
+			for (int i = 0; i < length; i++)
+				result = Math.Max(result, _strategy.High[i]);
+			return result;
+		}
+
+		private double GetMinPrice()
+		{
+			int length = Math.Min(20, _strategy.Low.Count);
+			double result = _strategy.Close[0];
+			for (int i = 0; i < length; i++)
+				result = Math.Min(result, _strategy.Low[i]);
+
+			return result;
+		}
+
 		public class OutlookDotComMail
 		{
 			private readonly string _sender;
@@ -211,15 +233,14 @@ namespace NinjaTrader.Strategy
 		{
 			ClosingHalf = true;
 			//Distance we will count from profit Ray
-			double d = _distance;
-			if (PositionType == MarketPosition.Long)
-				d *= -1;
+			double d = 0.5;
 
 			//Drawing the ray
-			double distance = .3;
 			HalfCloseRay = _strategy.DrawRay("HalfClose", false,
-				ProfitTargetRay.Anchor1BarsAgo, ProfitTargetRay.Anchor1Y + d*distance, ProfitTargetRay.Anchor2BarsAgo,
-				ProfitTargetRay.Anchor2Y + d*distance,
+				(ProfitTargetRay.Anchor1BarsAgo),
+				(ProfitTargetRay.Anchor1Y + EntryRay.Anchor1Y)*d,
+				(ProfitTargetRay.Anchor2BarsAgo) ,
+				(ProfitTargetRay.Anchor2Y + EntryRay.Anchor2BarsAgo)*d,
 				HcColor, DashStyle.Dash, 2);
 
 			Update();
@@ -705,6 +726,12 @@ namespace NinjaTrader.Strategy
 
 		private void _buttonClearSelection_Click(object sender, EventArgs e)
 		{
+
+			if (_currentRayContainer == null)
+			{
+				MessageBox.Show("You have nothing to clear");
+				return;
+			}
 			if (MarketPosition.Flat != Position.MarketPosition)
 			{
 				MessageBox.Show("You are trading close or deactivate to clear");
@@ -860,10 +887,22 @@ namespace NinjaTrader.Strategy
 
 		private void _radioBoxEntryLine(object sender, EventArgs e)
 		{
+			if (_currentRayContainer == null)
+			{
+				MessageBox.Show("Please select Ray line and Long or Short mode first");
+				_radioButtonNone.Checked = true;
+				return;
+			}
 			SteMassageEnable();
 		}
 		private void _radioBoxPartialProfit(object sender, EventArgs e)
 		{
+			if (_currentRayContainer == null)
+			{
+				MessageBox.Show("Please select Ray line and Long or Short mode first");
+				_radioButtonNone.Checked = true;
+				return;
+			}
 			SteMassageEnable();
 		}
 
@@ -1285,7 +1324,7 @@ namespace NinjaTrader.Strategy
 			// 
 			// button_ManualLong
 			// 
-			_buttonManualLong.BackColor = _disabledColor;
+			_buttonManualLong.BackColor = Color.FromArgb(194, 194, 44);
 			_buttonManualLong.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
 			_buttonManualLong.ForeColor = Color.White;
 			_buttonManualLong.Location = new Point(4, 41);
@@ -1663,7 +1702,7 @@ namespace NinjaTrader.Strategy
 			if (!_checkBoxEnablePartialProfit.Checked &&_checkBoxEnablePartialProfitAlert.Checked)
 			{
 				MessageBox.Show("First you should turn on the Partial Profit ");
-				_checkBoxEnablePartialProfit.Checked = false;
+				_checkBoxEnablePartialProfitAlert.Checked = false;
 				return;
 			}
 			_partialMsgLabel.Text = _checkBoxEnablePartialProfitAlert.Checked ? "50% TP Enabled + E" : "50% TP Enabled";
@@ -1704,8 +1743,8 @@ namespace NinjaTrader.Strategy
 			_currentRayContainer.StopRay.Anchor1BarsAgo = ray.Anchor1BarsAgo;
 			_currentRayContainer.StopRay.Anchor2BarsAgo = ray.Anchor2BarsAgo;
 
-			_currentRayContainer.StopRay.Anchor1Y = ray.Anchor1Y;
-			_currentRayContainer.StopRay.Anchor2Y = ray.Anchor2Y;
+			_currentRayContainer.StopRay.Anchor1Y = ray.Anchor1Y + (_currentRayContainer.Distance/10);
+			_currentRayContainer.StopRay.Anchor2Y = ray.Anchor2Y + (_currentRayContainer.Distance/10);
 
 			_currentRayContainer.Update();
 		}
