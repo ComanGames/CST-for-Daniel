@@ -297,6 +297,7 @@ namespace NinjaTrader.Strategy
 		protected override void OnBarUpdate()
 		{
 			UpdateGraphics();
+			CleaningSystem();
 			if (_isActive && _currentRayContainer != null)
 			{
 				UpdateOrders();
@@ -305,6 +306,43 @@ namespace NinjaTrader.Strategy
 				if(_checkBoxEnableTrailStop.Checked)
 					UpdateDTS();
 			}
+		}
+
+		private bool wasFlat = true;
+		private void CleaningSystem()
+		{
+			if (_currentRayContainer != null)
+			{
+				//if we was not in flat but now in flat it mean we should
+				//destroy over lines to do not corrupt over self 
+				if (!wasFlat && Position.MarketPosition == MarketPosition.Flat)
+				{
+					_currentRayContainer.Clear();
+					_currentRayContainer = null;
+					ResetOverForm();
+				}
+				else
+				{
+				}
+			}
+		}
+
+		private void ResetOverForm()
+		{
+
+			// disabling partial profit
+			_checkBoxEnablePartialProfit.Checked = false;
+			_checkBoxEnablePartialProfitAlert.Checked = false;
+
+			//Disabling Pips/Ticks to activate 
+			_radioButtonNone.Checked = true;
+
+			//Disabled DTS
+			_checkBoxEnableTrailStop.Checked = false;
+			_checkBoxEnablePartialProfitAlert.Checked = false;
+
+			//Update forms if we will need to update it 
+			UpdateForms();
 		}
 
 		private void CheckSte()
@@ -1625,7 +1663,7 @@ namespace NinjaTrader.Strategy
 			if (!_checkBoxEnablePartialProfit.Checked &&_checkBoxEnablePartialProfitAlert.Checked)
 			{
 				MessageBox.Show("First you should turn on the Partial Profit ");
-				_checkBoxEnablePartialProfitAlert.Checked = false;
+				_checkBoxEnablePartialProfit.Checked = false;
 				return;
 			}
 			_partialMsgLabel.Text = _checkBoxEnablePartialProfitAlert.Checked ? "50% TP Enabled + E" : "50% TP Enabled";
