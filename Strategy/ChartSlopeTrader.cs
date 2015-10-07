@@ -658,14 +658,30 @@ namespace NinjaTrader.Strategy
 
 		private void OtherInstrumentEntryOrder()
 		{
-			//if(_currentRayContainer.PositionType==MarketPosition.Long&&Close[0])
-			//{ }
-			
+			//WE set our parameters
+			int quantity = (int)_numericUpDownQuantity.Value;
+			double entryPrice = RayPrice(_currentRayContainer.EntryRay);
 
+			if (_currentRayContainer.PositionType == MarketPosition.Long && Close[0] < entryPrice)
+				EnterLong(quantity);
+			else if (_currentRayContainer.PositionType == MarketPosition.Short && Close[0] > entryPrice)
+				EnterShort(quantity);
 		}
 
 		private void OtherInstrumentExitOrders()
 		{
+			double profitPrice = RayPrice(_currentRayContainer.ProfitTargetRay);
+			double exitPrice = RayPrice(_currentRayContainer.ProfitTargetRay);
+			if (_currentRayContainer.PositionType == MarketPosition.Long)
+			{
+				if (Close[0] >= profitPrice || Close[0] <= exitPrice)
+					ExitLong();
+			}
+			else if (_currentRayContainer.PositionType == MarketPosition.Short)
+			{
+				if (Close[0] <= profitPrice || Close[0] >= exitPrice)
+					ExitShort();
+			}
 				
 		}
 
@@ -764,7 +780,7 @@ namespace NinjaTrader.Strategy
 			{
 				ExitLong(quantity);
 			}
-			else if (Position.MarketPosition == MarketPosition.Flat)
+			else if (Position.MarketPosition == MarketPosition.Short)
 				ExitShort(quantity);
 			_currentRayContainer.ClearHalfLine();
 			_checkBoxEnablePartialProfit.Checked = false;
