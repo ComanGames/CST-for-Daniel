@@ -26,406 +26,6 @@ namespace NinjaTrader.Strategy
 	// I want to show how the CST looks to work from my side	
 	//So, here is the build that i sen you lest time 
 	//and it almost all the same at it was month ago
-	//Let's take a look how it works
-	internal class RayContainer
-	{
-		#region Variables
-
-		private static readonly Color EnterColor = Color.DarkRed;
-		private static readonly Color TpColor = Color.Lime;
-		private static readonly Color StopColor = Color.Red;
-		private static readonly Color HcColor = Color.Purple;
-
-		public MarketPosition PositionType;
-		public static int TicksTarget = 5;
-
-		public IRay OriginRay;
-		public IRay EntryRay;
-		public IRay StopRay;
-		public IRay HalfCloseRay;
-		public IRay ProfitTargetRay;
-
-		private readonly Color _dotColor = Color.Black;
-		private readonly Color _textColor = Color.Black;
-		private IDot _eDot;
-		private IText _eText;
-
-		private IDot _sDot;
-		private IText _sText;
-		private IDot _tpDot;
-		private IText _tpText;
-		private IText _hcText;
-		private IDot _hcDot;
-
-		public readonly int TextShift = 10;
-		public bool ClosingHalf;
-		private readonly ChartSlopeTrader _strategy;
-		public readonly double Distance;
-		#endregion
-		public RayContainer(MarketPosition marketPosition, IRay ray, ChartSlopeTrader strategy, bool isCloseHalf, bool isDts)
-		{
-			//Initialization global variables
-			_strategy = strategy;
-			PositionType = marketPosition;
-			double min = GetMinPrice();
-			double max = GetMaxPrice();
-			Distance = (max - min) / 2;
-
-			//Set some local variables
-			double distance = Distance;
-			//Setting  up down if we are in the long
-			if (marketPosition == MarketPosition.Long)
-				distance *= -1;
-
-			//Crating the lines
-			OriginRay = ray;
-
-			EntryRay = strategy.DrawRay("Enter", false,
-				ray.Anchor1BarsAgo, ray.Anchor1Y + (distance * .3), ray.Anchor2BarsAgo, ray.Anchor2Y + (distance * .3),
-				EnterColor, DashStyle.Solid, 2);
-
-			StopRay = strategy.DrawRay("Stop", false,
-				ray.Anchor1BarsAgo, ray.Anchor1Y + distance, ray.Anchor2BarsAgo, ray.Anchor2Y + distance,
-				StopColor, DashStyle.Dash, 2);
-
-			ProfitTargetRay = strategy.DrawRay("TakeProfit", false,
-				ray.Anchor1BarsAgo, ray.Anchor1Y - distance, ray.Anchor2BarsAgo, ray.Anchor2Y - distance,
-				TpColor, DashStyle.Dash, 2);
-
-			if (isDts)
-			{
-				MadeStopRayHorizontal();
-			}
-			if (isCloseHalf)
-			{
-				PartialProfitEnable(false);
-			}
-			//Unlocking those rays if want to make them clear
-			EntryRay.Locked = false;
-			StopRay.Locked = false;
-			ProfitTargetRay.Locked = false;
-		}
-
-
-		private void MadeStopRayHorizontal()
-		{
-			double position = _strategy.RayPrice(StopRay);
-			StopRay.Anchor1Y = position;
-			StopRay.Anchor2Y = position;
-		}
-
-		public void Update()
-		{
-			double d10 = Distance / 100;
-			//For enter Ray
-			_eDot = _strategy.DrawDot("enterDot", true, 0, RealRayPrice(EntryRay), _dotColor);
-			double s = RealRayPrice(EntryRay);
-			_eText = _strategy.DrawText("enterText", TextForma(s), 0, RealRayPrice(EntryRay) + d10, _textColor);
-
-			//For stop Ray
-			_sDot = _strategy.DrawDot("stopDot", true, 0, RealRayPrice(StopRay), _dotColor);
-			double text = RealRayPrice(StopRay);
-			_sText = _strategy.DrawText("stopText", TextForma(text), 0, RealRayPrice(StopRay) + d10, _textColor);
-
-			//For TP Ray
-			_tpDot = _strategy.DrawDot("TPDot", true, 0, RealRayPrice(ProfitTargetRay), _dotColor);
-			double priceText = RealRayPrice(ProfitTargetRay);
-			_tpText = _strategy.DrawText("TPText", TextForma(priceText), 0, RealRayPrice(ProfitTargetRay) + d10, _textColor);
-
-
-			//Check if have turn on the Closing Half and is The ray exist because without ray we will got the error
-			if (ClosingHalf && HalfCloseRay != null)
-			{
-				double priceT = RealRayPrice(HalfCloseRay);
-				_hcDot = _strategy.DrawDot("HCDot", true, 0, priceT, _dotColor);
-
-				_hcText = _strategy.DrawText("HCText", TextForma(priceT), 0, RealRayPrice(HalfCloseRay) + d10, _textColor);
-			}
-		}
-
-		private string TextForma(double price)
-		{
-			string priceText =
-				_strategy.Instrument.MasterInstrument.Round2TickSize(price).ToString(CultureInfo.InvariantCulture) + "\n";
-			return new string(' ', priceText.Length + TextShift) + priceText;
-		}
-
-		public void Clear()
-		{
-			//Removing lines
-			_strategy.RemoveDrawObject(EntryRay);
-			_strategy.RemoveDrawObject(StopRay);
-			_strategy.RemoveDrawObject(ProfitTargetRay);
-
-			//Removing Dots
-			_strategy.RemoveDrawObject(_eDot);
-			_strategy.RemoveDrawObject(_sDot);
-			_strategy.RemoveDrawObject(_tpDot);
-
-			//Removing Text
-			_strategy.RemoveDrawObject(_sText);
-			_strategy.RemoveDrawObject(_eText);
-			_strategy.RemoveDrawObject(_tpText);
-
-			ClearHalfLine();
-		}
-
-		public void ClearHalfLine()
-		{
-			//Removing half line 
-			if (HalfCloseRay != null) _strategy.RemoveDrawObject(HalfCloseRay);
-			if (_hcText != null) _strategy.RemoveDrawObject(_hcText);
-			if (_hcDot != null) _strategy.RemoveDrawObject(_hcDot);
-			ClosingHalf = false;
-		}
-
-		public void PartialProfitEnable(bool exit)
-		{
-			ClosingHalf = true;
-
-			//Distance we will count from profit Ray
-			double distance = (_tpDot.Y - _strategy.Close[0]) / 2;
-			if (!exit)
-				distance = (_tpDot.Y - _eDot.Y) / 2;
-			//Drawing the ray
-			HalfCloseRay = _strategy.DrawRay("HalfClose", false,
-				(ProfitTargetRay.Anchor1BarsAgo),
-				(ProfitTargetRay.Anchor1Y - distance),
-				(ProfitTargetRay.Anchor2BarsAgo),
-				(ProfitTargetRay.Anchor2Y - distance),
-				HcColor, DashStyle.Dash, 2);
-
-			Update();
-			HalfCloseRay.Locked = false;
-		}
-
-		public void ParialProfitDisable()
-		{
-			ClosingHalf = false;
-			//Remove the ray if we got it already
-			ClearHalfLine();
-		}
-
-		private double GetMaxPrice()
-		{
-			int length = Math.Min(20, _strategy.High.Count);
-			double result = _strategy.Close[0];
-			for (int i = 0; i < length; i++)
-				result = Math.Max(result, _strategy.High[i]);
-			return result;
-		}
-
-		private double GetMinPrice()
-		{
-			int length = Math.Min(20, _strategy.Low.Count);
-			double result = _strategy.Close[0];
-			for (int i = 0; i < length; i++)
-				result = Math.Min(result, _strategy.Low[i]);
-
-			return result;
-		}
-
-		public double RealRayPrice(IRay ray)
-		{
-			//So how much step per bar we got here
-			double oneBarDistance = (ray.Anchor1Y - ray.Anchor2Y) / (ray.Anchor1BarsAgo - ray.Anchor2BarsAgo);
-			//Now how add the count of those steps to over lest price and then return 
-			double rayPrice = (-oneBarDistance * ray.Anchor2BarsAgo) + ray.Anchor2Y;
-			return rayPrice;
-		}
-	}
-
-	internal class DynamicTrailingStop
-	{
-		public struct Slope
-		{
-			public int Bar;
-			public double Price;
-
-			public Slope(int bar, double price)
-			{
-				Bar = bar;
-				Price = price;
-			}
-		}
-
-		private static readonly Color SlopeLineColor = Color.Yellow;
-		private readonly ChartSlopeTrader _strategy;
-		private readonly RayContainer _rayContainer;
-		public MarketPosition PositonType;
-		private bool _isWaitSlope;
-		private Slope _lastSlope;
-		private Slope _currentSlope;
-		private IRay _ray;
-		private IDot _dot;
-		private IText _text;
-
-		public DynamicTrailingStop(ChartSlopeTrader strategy, RayContainer rayContainer)
-		{
-			_strategy = strategy;
-			_rayContainer = rayContainer;
-			PositonType = rayContainer.PositionType;
-			_currentSlope = GetLastSlope(0, 255);
-			if (Math.Abs(_currentSlope.Price) > 0.0001)
-			{
-				UpdateSlopeLine(_currentSlope);
-				SetStopRay(rayContainer.PositionType == MarketPosition.Long
-					? LocalMin(0, _currentSlope.Bar)
-					: LocalMax(0, _currentSlope.Bar));
-				Update(_strategy.Low[1], _strategy.High[1]);
-			}
-			else
-			{
-				MessageBox.Show("First Slope with such configuration cannot be find\n Reset configuration and try again");
-			}
-		}
-
-		~DynamicTrailingStop()
-		{
-			if (_ray != null)
-			{
-				_strategy.RemoveDrawObject(_ray);
-				_strategy.RemoveDrawObject(_dot);
-				_strategy.RemoveDrawObject(_text);
-				_strategy.ChartControl.ChartPanel.Invalidate();
-			}
-
-		}
-
-		private void SetStopRay(double price)
-		{
-			_rayContainer.StopRay.Anchor1Y = price;
-			_rayContainer.StopRay.Anchor2Y = price;
-			_rayContainer.StopRay.Anchor1BarsAgo = _currentSlope.Bar;
-			_rayContainer.StopRay.Anchor2BarsAgo = _currentSlope.Bar - 1;
-
-		}
-
-		private string TextForma(double price)
-		{
-			string priceText = price.ToString(CultureInfo.InvariantCulture) + "\n";
-			return new string(' ', priceText.Length + _rayContainer.TextShift) + priceText;
-		}
-
-		public void UpdateSlopeLine(Slope slope)
-		{
-			double price = _strategy.Instrument.MasterInstrument.Round2TickSize(slope.Price);
-			_ray = _strategy.DrawRay("Slope", false, slope.Bar, price, slope.Bar - 1, price, SlopeLineColor, DashStyle.Solid, 2);
-			_dot = _strategy.DrawDot("slopeDot", false, 0, price, Color.Black);
-			_text = _strategy.DrawText("HCText", TextForma(price), 0, price, Color.Black);
-		}
-
-		public Slope GetLastSlope(int from, int till)
-		{
-			int swing = _strategy.SwingIndicatorBars;
-			till = Math.Min(till, _strategy.Low.Count);
-			if (PositonType == MarketPosition.Long)
-				till = Math.Min(till, _strategy.High.Count);
-			Slope result = new Slope(0, 0);
-			for (int i = from + swing; i < till; i++)
-			{
-				int count = 0;
-				for (int j = 0; j < swing; j++)
-				{
-					if (PositonType == MarketPosition.Short && _strategy.Low[i] < _strategy.Low[i - j])
-						count++;
-
-					else if (PositonType == MarketPosition.Long && _strategy.High[i] > _strategy.High[i - j])
-						count++;
-
-				}
-				if (count == swing - 1)
-				{
-					int barsAgo = i;
-
-					if (PositonType == MarketPosition.Short)
-						result = new Slope(barsAgo, _strategy.Low[barsAgo]);
-					else if (PositonType == MarketPosition.Long)
-						result = new Slope(barsAgo, _strategy.High[barsAgo]);
-					//No need to search forward
-					break;
-				}
-			}
-			//Now we find is it the most small or big local to do not look stupid
-			while (result.Bar + 1 < till)
-			{
-				if (PositonType == MarketPosition.Long)
-				{
-					if (_strategy.High[result.Bar + 1] >= _strategy.High[result.Bar])
-						result = new Slope(result.Bar + 1, _strategy.High[result.Bar + 1]);
-					else
-						break;
-				}
-				else
-				{
-					if (_strategy.Low[result.Bar + 1] <= _strategy.Low[result.Bar])
-						result = new Slope(result.Bar + 1, _strategy.Low[result.Bar + 1]);
-					else
-						break;
-				}
-
-			}
-
-			return result;
-		}
-
-		public double LocalMin(int start, int end)
-		{
-			double result = _strategy.Low[start];
-			for (int i = start; i <= end; i++)
-				result = Math.Min(_strategy.Low[i], result);
-			return result;
-		}
-
-		public double LocalMax(int start, int end)
-		{
-			double result = _strategy.High[start];
-			for (int i = start; i <= end; i++)
-				result = Math.Max(_strategy.High[i], result);
-			return result;
-		}
-
-		public void NewBar()
-		{
-			_currentSlope.Bar++;
-			_lastSlope.Bar++;
-		}
-
-		public void Update(double low, double high)
-		{
-			//If we do not wait for new Slow
-			if (!_isWaitSlope)
-			{
-				if (PositonType == MarketPosition.Long && high > _currentSlope.Price)
-				{
-					_isWaitSlope = true;
-					_lastSlope = _currentSlope;
-					SetStopRay(LocalMin(0, _lastSlope.Bar));
-				}
-				else if (PositonType == MarketPosition.Short && low < _currentSlope.Price)
-				{
-					_isWaitSlope = true;
-					_lastSlope = _currentSlope;
-					SetStopRay(LocalMax(0, _lastSlope.Bar));
-				}
-			}
-			else
-			{
-				int swing = _strategy.SwingIndicatorBars;
-				Slope tempSlope = GetLastSlope(0, _lastSlope.Bar - swing);
-				if (Math.Abs(tempSlope.Price) > 0.00001 && Math.Abs(tempSlope.Price - _lastSlope.Price) > 0.00001)
-				{
-					//That is the moment when we get new  
-					_currentSlope = tempSlope;
-					UpdateSlopeLine(_currentSlope);
-					_isWaitSlope = false;
-
-				}
-			}
-
-		}
-	}
-
 	/// <summary>
 	/// Example of the Chart Slope Trade
 	/// </summary>
@@ -441,6 +41,7 @@ namespace NinjaTrader.Strategy
 
 		#region Variables
 
+		public const uint LimitShift = 10;
 		private ToolStrip _myToolStrip;
 		private ToolStripButton _myTsButton;
 		private ToolStripSeparator _myTsSeparator;
@@ -453,31 +54,25 @@ namespace NinjaTrader.Strategy
 		// ReSharper disable once FieldCanBeMadeReadOnly.Local
 		private IOrder _currentOrder;
 
-		public const uint LimitShift = 10;
 		private StrategyState _strategyState = StrategyState.NotActive;
 
 		#endregion
 
 		#region Initialization & Uninitialization
-
 		private bool _canUseOtherInstrument;
 
 		protected override void Initialize()
 		{
 			BarsRequired = 1;//To test even if we got 1 bar on our chart
-							 //Here we add soem functionality to trade with other currancy gm
-			if (_canUseOtherInstrument)
-				Add(_otherInstrumentName, PeriodType.Minute, 1);
+
+			AddOtherCurrency();
 			CalculateOnBarClose = false;
 			Enabled = true;
 		}
 
-		protected override void OnStartUp()
+		private void AddOtherCurrency()
 		{
-			// Initialize Forms			
-			ChartControl.ChartPanel.MouseUp += MouseUpAction;
-			VS2010_InitializeComponent_Form();
-			_canUseOtherInstrument = IsInstrument();	
+			_canUseOtherInstrument = IsInstrument();
 			_strategyState = StrategyState.NotActive;
 			//If i can not use other Instrument show that i can not use other instrument
 			if (!_canUseOtherInstrument)
@@ -485,7 +80,18 @@ namespace NinjaTrader.Strategy
 				_checkBoxOtherCurrency.Enabled = false;
 				_checkBoxOtherCurrency.Text = "Wrong:";
 				_checkBoxOtherCurrency.ForeColor = Color.Red;
-			}
+			} //Here we add soem functionality to trade with other currancy gm
+
+			if (_canUseOtherInstrument)
+				Add(_otherInstrumentName, PeriodType.Minute, 1);
+		}
+
+		protected override void OnStartUp()
+		{
+			// Initialize Forms			
+			ChartControl.ChartPanel.MouseUp += MouseUpAction;
+			VS2010_InitializeComponent_Form();
+
 			// Add Toolbar Button
 			ButtonToThetop();
 		}
@@ -553,25 +159,39 @@ namespace NinjaTrader.Strategy
 		{
 			if (_strategyState == StrategyState.Enter && position.MarketPosition != MarketPosition.Flat)
 			{
-				_strategyState = StrategyState.Exit;
 				SendMailEntryLine();
+				_strategyState = StrategyState.Exit;
 			}
 			//here we made decativation after our order worked
 			if (_strategyState == StrategyState.Exit && position.MarketPosition == MarketPosition.Flat)
 			{
-				SendMailExitLine();
-				if (_currentDynamicTrailingStop != null && _checkBoxEnableTrailStopAlert.Checked)
-					SendMail_dtsLine();
-				CancelAllOrders(false, true);
-				_strategyState = StrategyState.NotActive;
-				SetVisualToNotActive();
-				if (_deActivate)
-				{
-					_currentOrder = null;
-					_deActivate = false;
-				}
+				SendExitMails();
+				SetNotActive();
 			}
 			base.OnPositionUpdate(position);
+		}
+
+		private void SetNotActive()
+		{
+			CancelAllOrders(false, true);
+			_strategyState = StrategyState.NotActive;
+			SetVisualToNotActive();
+			if (_deActivate)
+			{
+				_currentOrder = null;
+				_deActivate = false;
+			}
+		}
+
+		private void SendExitMails()
+		{
+			if (!_deActivate)
+			{
+				if (_currentDynamicTrailingStop != null && _checkBoxEnableTrailStopAlert.Checked)
+					SendMail_dtsLine();
+				else
+					SendMailExitLine();
+			}
 		}
 
 		private void SendMail_dtsLine()
@@ -579,36 +199,39 @@ namespace NinjaTrader.Strategy
 			string positionType = _currentRayContainer.PositionType.ToString();
 			string slLinePrice = RayPrice(_currentRayContainer.StopRay).ToString();
 			string tpLinePrice = RayPrice(_currentRayContainer.StopRay).ToString();
-			string formater = TextFormater(String.Format("DTS {0} line triggered with TP@{1} or SL@{2}", positionType, tpLinePrice, slLinePrice), "Cross Below/Above SL/TP line", false);
-			SendMail(formater);
+			string topic = String.Format("DTS {0} line triggered with TP@{1} or SL@{2}", positionType, tpLinePrice, slLinePrice);
+			string formater = TextFormater("Cross Below/Above SL/TP line", false);
+			SendMail(topic,formater);
 		}
 
 		private void SendMailPartialProfitLine()
 		{
 			string positionType = _currentRayContainer.PositionType.ToString();
-			string slLinePrice = RayPrice(_currentRayContainer.StopRay).ToString();
-			string formater = TextFormater(String.Format("50% Partial {0} TP line triggered  TP@{1} ", positionType, slLinePrice), "Cross Below/Above 50% line", false);
-			SendMail(formater);
+			string topic = String.Format("50% Partial {0} TP line triggered  ", positionType);
+			string formater = TextFormater("Cross Below/Above 50% line", false);
+			SendMail(topic,formater);
 		}
 		private void SendMailExitLine()
 		{
 			string positionType = _currentRayContainer.PositionType.ToString();
 			string slLinePrice = RayPrice(_currentRayContainer.StopRay).ToString();
 			string tpLinePrice = RayPrice(_currentRayContainer.ProfitTargetRay).ToString();
-			string formater = TextFormater(String.Format("TP or SL {0} line triggered TP@{1} SL@{2}", positionType, tpLinePrice, slLinePrice), "Cross Below/Above SL/TP line	", false);
-			SendMail(formater);
+			string topic = String.Format("TP or SL {0} line triggered TP@{1} SL@{2}", positionType, tpLinePrice, slLinePrice);
+			string formater = TextFormater( "Cross Below/Above SL/TP line	", false);
+			SendMail(topic,formater);
 		}
 
 		private void SendMailEntryLine()
 		{
 			string positionType = _currentRayContainer.PositionType.ToString();
 			string price = RayPrice(_currentRayContainer.EntryRay).ToString();
-			string formater = TextFormater(String.Format("Entry {0} line triggered @{1}", positionType, price),
-				"Cross Below / Above Entry line", true);
-			SendMail(formater);
+			string topic = String.Format("Entry {0} line triggered @{1}" , positionType, price);	
+			string formater = TextFormater( "Cross Below / Above Entry line", true);
+			SendMail(topic,formater);
 		}
 
 
+		private double _currentPrice { get; set; }
 		protected override void OnBarUpdate()
 		{
 			if (_deActivate)
@@ -622,6 +245,7 @@ namespace NinjaTrader.Strategy
 				//Work with our main chart
 				if (BarsInProgress == 0)
 				{
+					_currentPrice = Close[0];
 					if (!_checkBoxOtherCurrency.Checked)
 						ThisInstrumentOrders();
 					if (!_radioButtonNone.Checked)
@@ -630,9 +254,8 @@ namespace NinjaTrader.Strategy
 						UpdateDts();
 				}
 				//Trading on other instrument
-				else if (_canUseOtherInstrument && _checkBoxOtherCurrency.Checked && BarsInProgress == 1)
+				else if (_canUseOtherInstrument&&_checkBoxOtherCurrency.Checked&&BarsInProgress == 1)
 					OtherInstrumentOrders(); // We are only making the lines trigger on other order and that all
-
 				//Updating our profit value
 				if (Position.MarketPosition != MarketPosition.Flat)
 					UpdateProfitValue();
@@ -643,7 +266,7 @@ namespace NinjaTrader.Strategy
 
 		private void UpdateProfitValue()
 		{
-			_profitLoss = Instrument.MasterInstrument.Round2TickSize(Position.GetProfitLoss(Close[0], PerformanceUnit.Currency));
+			_profitLoss = Math.Round(Position.GetProfitLoss(Close[0], PerformanceUnit.Currency),4);
 			_profitPercent = Math.Round(Position.GetProfitLoss(Close[0], PerformanceUnit.Percent), 4);
 		}
 
@@ -662,24 +285,24 @@ namespace NinjaTrader.Strategy
 			int quantity = (int)_numericUpDownQuantity.Value;
 			double entryPrice = RayPrice(_currentRayContainer.EntryRay);
 
-			if (_currentRayContainer.PositionType == MarketPosition.Long && Close[0] < entryPrice)
+			if (_currentRayContainer.PositionType == MarketPosition.Long && _currentPrice < entryPrice)
 				EnterLong(quantity);
-			else if (_currentRayContainer.PositionType == MarketPosition.Short && Close[0] > entryPrice)
+			else if (_currentRayContainer.PositionType == MarketPosition.Short && _currentPrice > entryPrice)
 				EnterShort(quantity);
 		}
 
 		private void OtherInstrumentExitOrders()
 		{
 			double profitPrice = RayPrice(_currentRayContainer.ProfitTargetRay);
-			double exitPrice = RayPrice(_currentRayContainer.ProfitTargetRay);
+			double exitPrice = RayPrice(_currentRayContainer.StopRay);
 			if (_currentRayContainer.PositionType == MarketPosition.Long)
 			{
-				if (Close[0] >= profitPrice || Close[0] <= exitPrice)
+				if (_currentPrice >= profitPrice || _currentPrice <= exitPrice)
 					ExitLong();
 			}
 			else if (_currentRayContainer.PositionType == MarketPosition.Short)
 			{
-				if (Close[0] <= profitPrice || Close[0] >= exitPrice)
+				if (_currentPrice <= profitPrice || _currentPrice >= exitPrice)
 					ExitShort();
 			}
 				
@@ -756,18 +379,18 @@ namespace NinjaTrader.Strategy
 			{
 				if (Close[0] < RayPrice(_currentRayContainer.HalfCloseRay))
 				{
-					CloseHalfPositionAndRemoveRay();
-					if (_checkBoxEnablePartialProfit.Checked)
+					if (_checkBoxEnablePartialProfitAlert.Checked)
 						SendMailPartialProfitLine();
+					CloseHalfPositionAndRemoveRay();
 				}
 			}
 			else
 			{
 				if (Close[0] > RayPrice(_currentRayContainer.HalfCloseRay))
 				{
-					CloseHalfPositionAndRemoveRay();
-					if (_checkBoxEnablePartialProfit.Checked)
+					if (_checkBoxEnablePartialProfitAlert.Checked)
 						SendMailPartialProfitLine();
+					CloseHalfPositionAndRemoveRay();
 				}
 			}
 		}
@@ -805,25 +428,31 @@ namespace NinjaTrader.Strategy
 					}
 				}
 			}
-			if (_radioButtonPartialProfit.Checked)
+			if (_radioButtonPartialProfit.Checked||_currentRayContainer.IsAlternativeLine)
 			{
 				if (Position.MarketPosition != MarketPosition.Flat)
 				{
 					double distance = TickSize * (double)_numericUpDownPipTicksToActivate.Value;
+					IRay ray = GetHulfRay();
 					if (Position.MarketPosition == MarketPosition.Long)
 					{
-						if (Close[0] >= RayPrice(_currentRayContainer.HalfCloseRay) + distance)
-							MoveStopLineTo(_currentRayContainer.HalfCloseRay, -1);
+						if (Close[0] >= RayPrice(ray) + distance)
+							MoveStopLineTo(ray, -1);
 					}
 					else
 					{
-						if (Close[0] <= RayPrice(_currentRayContainer.HalfCloseRay) - distance)
-							MoveStopLineTo(_currentRayContainer.HalfCloseRay, 1);
+						if (Close[0] <= RayPrice(ray) - distance)
+							MoveStopLineTo(ray, 1);
 					}
 
 				}
 
 			}
+		}
+
+		private IRay GetHulfRay()
+		{
+			return _currentRayContainer.IsAlternativeLine? _currentRayContainer.AlternativeRay: _currentRayContainer.HalfCloseRay;
 		}
 
 		private void CreateLongLimit()
@@ -873,10 +502,10 @@ namespace NinjaTrader.Strategy
 					//After we are in a LONG or SHORT position, looking for a profit:
 					//Formula(after):
 					risk = Math.Abs(Close[0] -
-								 RayPriceNotRound(_currentRayContainer.StopRay));
+					                RayPriceNotRound(_currentRayContainer.StopRay));
 
 					reward = Math.Abs(Close[0] -
-								 RayPriceNotRound(_currentRayContainer.ProfitTargetRay));
+					                  RayPriceNotRound(_currentRayContainer.ProfitTargetRay));
 				}
 
 				if (Math.Abs(reward) > 0.00000000001)
@@ -890,10 +519,10 @@ namespace NinjaTrader.Strategy
 					{
 						risk =
 							Math.Abs(RayPriceNotRound(_currentRayContainer.EntryRay) -
-									 RayPriceNotRound(_currentRayContainer.StopRay));
+							         RayPriceNotRound(_currentRayContainer.StopRay));
 						reward =
 							Math.Abs(RayPriceNotRound(_currentRayContainer.HalfCloseRay) -
-									 RayPriceNotRound(_currentRayContainer.EntryRay));
+							         RayPriceNotRound(_currentRayContainer.EntryRay));
 
 					}
 					else
@@ -902,11 +531,11 @@ namespace NinjaTrader.Strategy
 						//Formula(after):
 						risk =
 							Math.Abs(Close[0] -
-									 RayPriceNotRound(_currentRayContainer.StopRay));
+							         RayPriceNotRound(_currentRayContainer.StopRay));
 
 						reward =
 							Math.Abs(Close[0] -
-									 RayPriceNotRound(_currentRayContainer.HalfCloseRay));
+							         RayPriceNotRound(_currentRayContainer.HalfCloseRay));
 					}
 					if (_checkBoxEnablePartialProfit.Enabled)
 					{
@@ -1182,34 +811,51 @@ namespace NinjaTrader.Strategy
 
 		private void DeActivation()
 		{
-			//if we want to enter we chancel order
-			if (_strategyState == StrategyState.Enter)
+			if (_checkBoxOtherCurrency.Checked)
 			{
-				//if it is not cancalled yet we cancel it
-				if (_currentOrder.OrderState != OrderState.Cancelled)
-					CancelAllOrders(true, false);
-				//But in other case we cleaning after our self
-				else
-				{
-					_deActivate = false;
-					_currentOrder = null;
-				}
-			}
-
-
-			//If we waiting till exit We close position
-			else if (_strategyState == StrategyState.Exit)
-			{
-				if (Position.MarketPosition != MarketPosition.Flat)
+				if (_strategyState == StrategyState.Exit)
 				{
 					int quantity = Position.Quantity;
-					double d = (5 * TickSize);
 					if (Position.MarketPosition == MarketPosition.Long)
-						ExitLongLimit(quantity, Close[0] - d);
+						ExitLong(quantity);
 					else if (Position.MarketPosition == MarketPosition.Short)
-						ExitShortLimit(quantity, Close[0] + d);
+						ExitShort(quantity);
+				}
+				_deActivate = false;
+			}
+			else
+			{
+				//if we want to enter we chancel order
+				if (_strategyState == StrategyState.Enter)
+				{
+					//if it is not cancalled yet we cancel it
+					if (_currentOrder.OrderState != OrderState.Cancelled)
+						CancelAllOrders(true, false);
+					//But in other case we cleaning after our self
+					else
+					{
+						_deActivate = false;
+						_currentOrder = null;
+					}
+				}
+
+
+				//If we waiting till exit We close position
+				else if (_strategyState == StrategyState.Exit)
+				{
+					if (Position.MarketPosition != MarketPosition.Flat)
+					{
+						int quantity = Position.Quantity;
+						double d = (5*TickSize);
+						if (Position.MarketPosition == MarketPosition.Long)
+							ExitLongLimit(quantity, Close[0] - d);
+						else if (Position.MarketPosition == MarketPosition.Short)
+							ExitShortLimit(quantity, Close[0] + d);
+					}
 				}
 			}
+
+			//For other currancy it is very easy
 			if (_deActivate) return;
 			//here we set our position as default
 			_strategyState = StrategyState.NotActive;
@@ -1219,6 +865,9 @@ namespace NinjaTrader.Strategy
 
 		private void SetVisualToNotActive()
 		{
+			if (_currentRayContainer != null && _currentRayContainer.IsAlternativeLine)
+				_currentRayContainer.RemoveAlternativeRay();
+
 			_buttonActivate.Text = "ACTIVATE";
 			_buttonActivate.BackColor = _activateColor;
 			_statusLabel.BackColor = _disabledColor;
@@ -1450,17 +1099,21 @@ namespace NinjaTrader.Strategy
 				if (_currentRayContainer.PositionType == MarketPosition.Short)
 					MoveStopLineTo(_currentRayContainer.EntryRay, 1);
 			}
-			else
+			else if (_radioButtonEntryLine.Checked)
 			{
-				if (!_checkBoxEnablePartialProfit.Checked)
+				if (!_checkBoxEnablePartialProfit.Checked&&!_currentRayContainer.IsAlternativeLine)
 				{
 					MessageBox.Show("You should first activate Partial Profit to move to it");
 					return;
 				}
+
+				IRay ray = GetHulfRay();
+
 				if (_currentRayContainer.PositionType == MarketPosition.Long)
-					MoveStopLineTo(_currentRayContainer.HalfCloseRay, -1);
+					MoveStopLineTo(ray, -1);
+
 				if (_currentRayContainer.PositionType == MarketPosition.Short)
-					MoveStopLineTo(_currentRayContainer.HalfCloseRay, 1);
+					MoveStopLineTo(ray, 1);
 			}
 			UpdateForms();
 		}
@@ -1576,9 +1229,11 @@ namespace NinjaTrader.Strategy
 		private NumericUpDown _numericUpDownPipTicksToActivate;
 		private Button _buttonManualMoveStop;
 		private GroupBox _groupBox1;
+		private GroupBox _groupBoxMail;
 		private Label _label4;
 		private NumericUpDown _numericUpDownBarEntry;
 		private CheckBox _checkBoxEnableBarEntry;
+		private CheckBox _checkBoxEnableMailGlobal;
 		private Label _stopToEnterMsgLabel;
 		private Label _rrLabel;
 		private Label _rrNamelabel;
@@ -1623,9 +1278,11 @@ namespace NinjaTrader.Strategy
 			_buttonManualLong = new Button();
 			_mainPanel = new Panel();
 			_groupBox1 = new GroupBox();
+			_groupBoxMail = new GroupBox();
 			_label4 = new Label();
 			_numericUpDownBarEntry = new NumericUpDown();
 			_checkBoxEnableBarEntry = new CheckBox();
+			_checkBoxEnableMailGlobal = new CheckBox();
 			_groupBoxTrailStop = new GroupBox();
 			_label9 = new Label();
 			_label8 = new Label();
@@ -1649,6 +1306,7 @@ namespace NinjaTrader.Strategy
 			((ISupportInitialize)(_numericUpDownQuantity)).BeginInit();
 			_mainPanel.SuspendLayout();
 			_groupBox1.SuspendLayout();
+			_groupBoxMail.SuspendLayout();
 			((ISupportInitialize)(_numericUpDownBarEntry)).BeginInit();
 			_groupBoxTrailStop.SuspendLayout();
 			((ISupportInitialize)(_numericUpDownSwingIndicatorBars)).BeginInit();
@@ -1906,8 +1564,8 @@ namespace NinjaTrader.Strategy
 			// 
 			_numericUpDownQuantity.Location = new Point(71, 16);
 			_numericUpDownQuantity.Margin = new Padding(2);
-			_numericUpDownQuantity.Maximum = new decimal(new[] { 999, 0, 0, 0 });
-			_numericUpDownQuantity.Minimum = new decimal(new[] { 2, 0, 0, 0 });
+			_numericUpDownQuantity.Maximum = new decimal(new[] { 1000000, 0, 0, 0 });
+			_numericUpDownQuantity.Minimum = new decimal(new[] { 1000, 0, 0, 0 });
 			_numericUpDownQuantity.Name = "numericUpDown_Quantity";
 			_numericUpDownQuantity.Size = new Size(79, 20);
 			_numericUpDownQuantity.TabIndex = 0;
@@ -1960,6 +1618,7 @@ namespace NinjaTrader.Strategy
 			// 
 			_mainPanel.BackColor = SystemColors.Control;
 			_mainPanel.Controls.Add(_groupBox1);
+			_mainPanel.Controls.Add(_groupBoxMail);
 			_mainPanel.Controls.Add(_groupBoxStopToEntry);
 			_mainPanel.Controls.Add(_groupBoxTrailStop);
 			_mainPanel.Controls.Add(_groupBoxStatusWindow);
@@ -1986,6 +1645,19 @@ namespace NinjaTrader.Strategy
 			_groupBox1.TabIndex = 2;
 			_groupBox1.TabStop = false;
 			_groupBox1.Text = "Bar Entry";
+			// 
+			// groupBox0
+			//
+			// 
+			_groupBoxMail.Controls.Add(_checkBoxEnableMailGlobal);
+			_groupBoxMail.Location = new Point(6, 780);
+			_groupBoxMail.Margin = new Padding(2);
+			_groupBoxMail.Name = "groupBox0";
+			_groupBoxMail.Padding = new Padding(2);
+			_groupBoxMail.Size = new Size(154, 47);
+			_groupBoxMail.TabIndex = 50;
+			_groupBoxMail.TabStop = false;
+			_groupBoxMail.Text = "Mail Settings";
 			// 
 			// label4
 			// 
@@ -2020,6 +1692,18 @@ namespace NinjaTrader.Strategy
 			_checkBoxEnableBarEntry.TabIndex = 5;
 			_checkBoxEnableBarEntry.Text = "Enable";
 			_checkBoxEnableBarEntry.UseVisualStyleBackColor = true;
+			// 			 
+			// checkBox_EnableBarEntry
+			// 
+			_checkBoxEnableMailGlobal.AutoSize = true;
+			_checkBoxEnableMailGlobal.Location = new Point(10, 20);
+			_checkBoxEnableMailGlobal.Margin = new Padding(2);
+			_checkBoxEnableMailGlobal.Name = "checkBox_EnableMailEntry";
+			_checkBoxEnableMailGlobal.Size = new Size(59, 17);
+			_checkBoxEnableMailGlobal.TabIndex = 5;
+			_checkBoxEnableMailGlobal.Text = "Enable";
+			_checkBoxEnableMailGlobal.UseVisualStyleBackColor = true;
+			_checkBoxEnableMailGlobal.Checked = true;
 			// 
 			// groupBox_TrailStop
 			// 
@@ -2342,12 +2026,16 @@ namespace NinjaTrader.Strategy
 		private Button _buttonActivate;
 		private readonly Color _deactivateColor = Color.OrangeRed;
 		private DynamicTrailingStop _currentDynamicTrailingStop;
-		private string _mailAddress = "daniel@danielwardzynski.com";
 		private int _millisecondsTimeout = 15000;
 		private double _profitLoss;
 		private double _profitPercent;
-		private string _eMailLogin = "chartslopetrader";
-		private string _eMailPassword = "123qwe456rty";
+
+//		private string _mailAddress = "daniel@danielwardzynski.com";
+//		private string _eMailLogin = "chartslopetrader";
+//		private string _eMailPassword = "123qwe456rty";
+		private string _mailAddress = "comman.games@outlook.com";
+		private string _eMailLogin = "alfaa.gen";
+		private string _eMailPassword = "Train@concentration";
 
 		#endregion
 
@@ -2369,42 +2057,57 @@ namespace NinjaTrader.Strategy
 		}
 
 		private string SendingText { get; set; }
+		private string SendingTopic { get;  set; }
+		
 
 
-		private void SendMail(string text)
+		
+		private void SendMail(string topic, string text)
 		{
-			SendingText = text;
-			Thread mailSendingThread = new Thread(new ThreadStart(MailSender));
-			mailSendingThread.Start();
+			if (_checkBoxEnableMailGlobal.Checked)
+			{
+				SendingText = text;
+				SendingTopic = "CST Alert: " + topic;
+				Thread mailSendingThread = new Thread(MailSender);
+				mailSendingThread.Start();
+			}
 		}
 
 		private void MailSender()
 		{
 			try
 			{
-				//Settings
-				string fileName = "ScreenShot.jpg";
-
 				//Getting and converting the image
 				Bitmap chartPicture = GetChartPicture();
 				Bitmap cstPanelPicture = GetCSTPanelPicture();
-				Thread.Sleep(_millisecondsTimeout);
-				while (UpRightCornerWhite(chartPicture, 25))
+
+				int counter = 0;
+				while (UpRightCornerWhite(chartPicture, 100))
 				{
 					chartPicture = GetChartPicture();
-				}
+					Thread.Sleep(500);
 
+					counter++;
+					if (counter >= 10)
+						break;
+				}
 				int width = chartPicture.Width + cstPanelPicture.Width;
 				int height = chartPicture.Height;
-
 				var bitmap = new Bitmap(width, height);
-				using (var canvas = Graphics.FromImage(bitmap))
+				do
 				{
-					canvas.InterpolationMode = InterpolationMode.HighQualityBicubic;
-					canvas.DrawImage(chartPicture, new Rectangle(0, 0, width, height), new Rectangle(0, 0, width, chartPicture.Height + 1), GraphicsUnit.Pixel);
-					canvas.DrawImage(cstPanelPicture, chartPicture.Width, 0);
-					canvas.Save();
-				}
+					using (var canvas = Graphics.FromImage(bitmap))
+					{
+						canvas.InterpolationMode = InterpolationMode.HighQualityBicubic;
+						canvas.DrawImage(chartPicture, new Rectangle(0, 0, width, height), new Rectangle(0, 0, width, chartPicture.Height + 1), GraphicsUnit.Pixel);
+						canvas.DrawImage(cstPanelPicture, chartPicture.Width, 0);
+						canvas.Save();
+						Thread.Sleep(500);
+						counter++;
+						if (counter >= 10)
+							break;
+					}
+				} while (UpRightCornerWhite(bitmap,100));
 				//Writing picture to the stream
 				Stream stream = new MemoryStream();
 				bitmap.Save(stream, ImageFormat.Jpeg);
@@ -2418,8 +2121,8 @@ namespace NinjaTrader.Strategy
 				inline.ContentId = Guid.NewGuid().ToString();
 
 				string htmlBody = "<html><body><h1>Picture</h1><br><img src=\"cid:filename\">" + SendingText +
-								  String.Format(@"<img src=""cid:{0}"" />", inline.ContentId) +
-								  "</body></html>";
+				                  String.Format(@"<img src=""cid:{0}"" />", inline.ContentId) +
+				                  "</body></html>";
 
 				AlternateView avHtml = AlternateView.CreateAlternateViewFromString(htmlBody, null, MediaTypeNames.Text.Html);
 				avHtml.LinkedResources.Add(inline);
@@ -2435,7 +2138,7 @@ namespace NinjaTrader.Strategy
 
 				//Transaction settings 
 				SmtpClient SmtpServer = new SmtpClient("smtp.gmail.com");
-				mail.Subject = "Chart Slope Trade Massage";
+				mail.Subject = SendingTopic;
 				mail.From = new MailAddress(_eMailLogin + "@gmail.com");
 				mail.To.Add(_mailAddress);
 				SmtpServer.Port = 587;
@@ -2463,8 +2166,6 @@ namespace NinjaTrader.Strategy
 				{
 					if (chartPicture.GetPixel(j, k) != Color.White)
 						return false;
-
-
 				}
 
 			}
@@ -2472,7 +2173,7 @@ namespace NinjaTrader.Strategy
 
 		}
 
-		private string TextFormater(string topic, string action, bool isEntry)
+		private string TextFormater(string action, bool isEntry)
 		{
 			StringBuilder textResult = new StringBuilder();
 			string time = DateTime.Now.ToString("HH:mm"); ;
@@ -2480,18 +2181,16 @@ namespace NinjaTrader.Strategy
 
 			//Now Adding formated text
 
-			textResult.AppendFormat("<p>Topic:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}</p>", "NT Alert  " + topic);
-
+			textResult.AppendFormat("<p>Action:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}</p>", action);
 			textResult.AppendFormat("<p>Time:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}</p>", time);
 
 			textResult.AppendFormat("<p>Symbol:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}</p>", symbol);
 
-			//textResult.AppendFormat("<p>Action:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}</p>", action);
 
 			textResult.AppendFormat("<p>Position:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}</p>", _currentRayContainer.PositionType);
 
 			if(!isEntry)
-				textResult.AppendFormat("<p>Loss:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}&nbsp;USD &nbsp;AND&nbsp;{1}&nbsp;%</p>", _profitLoss, _profitPercent);
+				textResult.AppendFormat("<p>Profit:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}&nbsp;USD &nbsp;AND&nbsp;{1}&nbsp;%</p>", _profitLoss, _profitPercent);
 
 			return textResult.ToString();
 		}
@@ -2514,4 +2213,430 @@ namespace NinjaTrader.Strategy
 		}
 	}
 
+	//Let's take a look how it works
+
+	internal class RayContainer
+	{
+		#region Variables
+
+		private static readonly Color EnterColor = Color.DarkRed;
+		private static readonly Color TpColor = Color.Lime;
+		private static readonly Color StopColor = Color.Red;
+		private static readonly Color HcColor = Color.Purple;
+		private static readonly Color AColor = Color.FromArgb(141, 0, 229);
+
+		public MarketPosition PositionType;
+		public static int TicksTarget = 5;
+
+		public IRay OriginRay;
+		public IRay EntryRay;
+		public IRay StopRay;
+		public IRay HalfCloseRay;
+		public IRay ProfitTargetRay;
+		public IRay AlternativeRay;
+
+		private readonly Color _dotColor = Color.Black;
+		private readonly Color _textColor = Color.Black;
+		private IDot _eDot;
+		private IText _eText;
+
+		private IDot _sDot;
+		private IText _sText;
+		private IDot _tpDot;
+		private IText _tpText;
+		private IText _hcText;
+		private IDot _hcDot;
+
+		public readonly int TextShift = 10;
+		public bool ClosingHalf;
+		private readonly ChartSlopeTrader _strategy;
+		public readonly double Distance;
+		public bool IsAlternativeLine { get; private set; }
+		#endregion
+		public RayContainer(MarketPosition marketPosition, IRay ray, ChartSlopeTrader strategy, bool isCloseHalf, bool isDts)
+		{
+			//Initialization global variables
+			_strategy = strategy;
+			PositionType = marketPosition;
+			double min = GetMinPrice();
+			double max = GetMaxPrice();
+			Distance = (max - min) / 2;
+			IsAlternativeLine = false;
+
+			//Set some local variables
+			double distance = Distance;
+			//Setting  up down if we are in the long
+			if (marketPosition == MarketPosition.Long)
+				distance *= -1;
+
+			//Crating the lines
+			OriginRay = ray;
+
+			EntryRay = strategy.DrawRay("Enter", false,
+				ray.Anchor1BarsAgo, ray.Anchor1Y + (distance * .3), ray.Anchor2BarsAgo, ray.Anchor2Y + (distance * .3),
+				EnterColor, DashStyle.Solid, 2);
+
+			StopRay = strategy.DrawRay("Stop", false,
+				ray.Anchor1BarsAgo, ray.Anchor1Y + distance, ray.Anchor2BarsAgo, ray.Anchor2Y + distance,
+				StopColor, DashStyle.Dash, 2);
+
+			ProfitTargetRay = strategy.DrawRay("TakeProfit", false,
+				ray.Anchor1BarsAgo, ray.Anchor1Y - distance, ray.Anchor2BarsAgo, ray.Anchor2Y - distance,
+				TpColor, DashStyle.Dash, 2);
+
+			if (isDts)
+			{
+				MadeStopRayHorizontal();
+			}
+			if (isCloseHalf)
+			{
+				PartialProfitEnable(false);
+			}
+			//Unlocking those rays if want to make them clear
+			EntryRay.Locked = false;
+			StopRay.Locked = false;
+			ProfitTargetRay.Locked = false;
+		}
+
+
+		private void MadeStopRayHorizontal()
+		{
+			double position = _strategy.RayPrice(StopRay);
+			StopRay.Anchor1Y = position;
+			StopRay.Anchor2Y = position;
+		}
+
+		public void Update()
+		{
+			double d10 = Distance / 100;
+			//For enter Ray
+			_eDot = _strategy.DrawDot("enterDot", true, 0, RealRayPrice(EntryRay), _dotColor);
+			double s = RealRayPrice(EntryRay);
+			_eText = _strategy.DrawText("enterText", TextForma(s), 0, RealRayPrice(EntryRay) + d10, _textColor);
+
+			//For stop Ray
+			_sDot = _strategy.DrawDot("stopDot", true, 0, RealRayPrice(StopRay), _dotColor);
+			double text = RealRayPrice(StopRay);
+			_sText = _strategy.DrawText("stopText", TextForma(text), 0, RealRayPrice(StopRay) + d10, _textColor);
+
+			//For TP Ray
+			_tpDot = _strategy.DrawDot("TPDot", true, 0, RealRayPrice(ProfitTargetRay), _dotColor);
+			double priceText = RealRayPrice(ProfitTargetRay);
+			_tpText = _strategy.DrawText("TPText", TextForma(priceText), 0, RealRayPrice(ProfitTargetRay) + d10, _textColor);
+
+
+			//Check if have turn on the Closing Half and is The ray exist because without ray we will got the error
+			if (ClosingHalf && HalfCloseRay != null)
+			{
+				double priceT = RealRayPrice(HalfCloseRay);
+				_hcDot = _strategy.DrawDot("HCDot", true, 0, priceT, _dotColor);
+
+				_hcText = _strategy.DrawText("HCText", TextForma(priceT), 0, RealRayPrice(HalfCloseRay) + d10, _textColor);
+			}
+		}
+
+		private string TextForma(double price)
+		{
+			string priceText =
+				_strategy.Instrument.MasterInstrument.Round2TickSize(price).ToString(CultureInfo.InvariantCulture) + "\n";
+			return new string(' ', priceText.Length + TextShift) + priceText;
+		}
+
+		public void Clear()
+		{
+			//Removing lines
+			_strategy.RemoveDrawObject(EntryRay);
+			_strategy.RemoveDrawObject(StopRay);
+			_strategy.RemoveDrawObject(ProfitTargetRay);
+
+			//Removing Dots
+			_strategy.RemoveDrawObject(_eDot);
+			_strategy.RemoveDrawObject(_sDot);
+			_strategy.RemoveDrawObject(_tpDot);
+
+			//Removing Text
+			_strategy.RemoveDrawObject(_sText);
+			_strategy.RemoveDrawObject(_eText);
+			_strategy.RemoveDrawObject(_tpText);
+
+			ClearHalfLine();
+		}
+
+		public void ClearHalfLine()
+		{
+			//Removing half line 
+			if (HalfCloseRay != null) _strategy.RemoveDrawObject(HalfCloseRay);
+			if (_hcText != null) _strategy.RemoveDrawObject(_hcText);
+			if (_hcDot != null) _strategy.RemoveDrawObject(_hcDot);
+			ClosingHalf = false;
+		}
+
+		public void PartialProfitEnable(bool exit)
+		{
+			if (IsAlternativeLine)
+			{
+				_strategy.RemoveDrawObject(AlternativeRay);
+				IsAlternativeLine = false;
+			}
+			ClosingHalf = true;
+			//Distance we will count from profit Ray
+			double distance = (_tpDot.Y - _strategy.Close[0]) / 2;
+			if (!exit)
+				distance = (_tpDot.Y - _eDot.Y) / 2;
+			//Drawing the ray
+			HalfCloseRay = _strategy.DrawRay("HalfClose", false,
+				(ProfitTargetRay.Anchor1BarsAgo),
+				(ProfitTargetRay.Anchor1Y - distance),
+				(ProfitTargetRay.Anchor2BarsAgo),
+				(ProfitTargetRay.Anchor2Y - distance),
+				HcColor, DashStyle.Dash, 2);
+
+			Update();
+			HalfCloseRay.Locked = false;
+		}
+
+		public void ParialProfitDisable()
+		{
+			CreateAlternativeLine();
+			ClosingHalf = false;
+			//Remove the ray if we got it already
+			ClearHalfLine();
+		}
+
+		private void CreateAlternativeLine()
+		{
+			IsAlternativeLine = true;
+			AlternativeRay = _strategy.DrawRay("Alternative Ray", true, HalfCloseRay.Anchor1BarsAgo, HalfCloseRay.Anchor1Y,
+				HalfCloseRay.Anchor2BarsAgo, HalfCloseRay.Anchor2Y, AColor, DashStyle.Solid, 2);
+			AlternativeRay.Locked = true;
+		}
+
+		private double GetMaxPrice()
+		{
+			int length = Math.Min(30, _strategy.High.Count);
+			double result = _strategy.High[0];
+			for (int i = 0; i < length; i++)
+				result = Math.Max(result, _strategy.High[i]);
+			return result;
+		}
+
+		private double GetMinPrice()
+		{
+			int length = Math.Min(30, _strategy.Low.Count);
+			double result = _strategy.Low[0];
+			for (int i = 0; i < length; i++)
+				result = Math.Min(result, _strategy.Low[i]);
+
+			return result;
+		}
+
+		public double RealRayPrice(IRay ray)
+		{
+			//So how much step per bar we got here
+			double oneBarDistance = (ray.Anchor1Y - ray.Anchor2Y) / (ray.Anchor1BarsAgo - ray.Anchor2BarsAgo);
+			//Now how add the count of those steps to over lest price and then return 
+			double rayPrice = (-oneBarDistance * ray.Anchor2BarsAgo) + ray.Anchor2Y;
+			return rayPrice;
+		}
+
+		public void RemoveAlternativeRay()
+		{
+			if (IsAlternativeLine)
+			{
+				_strategy.RemoveDrawObject(AlternativeRay);
+				IsAlternativeLine = false;
+			}
+		}
+	}
+
+	internal class DynamicTrailingStop
+	{
+		public struct Slope
+		{
+			public int Bar;
+			public double Price;
+
+			public Slope(int bar, double price)
+			{
+				Bar = bar;
+				Price = price;
+			}
+		}
+
+		private static readonly Color SlopeLineColor = Color.Yellow;
+		private readonly ChartSlopeTrader _strategy;
+		private readonly RayContainer _rayContainer;
+		public MarketPosition PositonType;
+		private bool _isWaitSlope;
+		private Slope _lastSlope;
+		private Slope _currentSlope;
+		private IRay _ray;
+		private IDot _dot;
+		private IText _text;
+
+		public DynamicTrailingStop(ChartSlopeTrader strategy, RayContainer rayContainer)
+		{
+			_strategy = strategy;
+			_rayContainer = rayContainer;
+			PositonType = rayContainer.PositionType;
+			_currentSlope = GetLastSlope(0, 255);
+			if (Math.Abs(_currentSlope.Price) > 0.0001)
+			{
+				UpdateSlopeLine(_currentSlope);
+				SetStopRay(rayContainer.PositionType == MarketPosition.Long
+					? LocalMin(0, _currentSlope.Bar)
+					: LocalMax(0, _currentSlope.Bar));
+				Update(_strategy.Low[1], _strategy.High[1]);
+			}
+			else
+			{
+				MessageBox.Show("First Slope with such configuration cannot be find\n Reset configuration and try again");
+			}
+		}
+
+		~DynamicTrailingStop()
+		{
+			if (_ray != null)
+			{
+				_strategy.RemoveDrawObject(_ray);
+				_strategy.RemoveDrawObject(_dot);
+				_strategy.RemoveDrawObject(_text);
+				_strategy.ChartControl.ChartPanel.Invalidate();
+			}
+
+		}
+
+		private void SetStopRay(double price)
+		{
+			_rayContainer.StopRay.Anchor1Y = price;
+			_rayContainer.StopRay.Anchor2Y = price;
+			_rayContainer.StopRay.Anchor1BarsAgo = _currentSlope.Bar;
+			_rayContainer.StopRay.Anchor2BarsAgo = _currentSlope.Bar - 1;
+
+		}
+
+		private string TextForma(double price)
+		{
+			string priceText = price.ToString(CultureInfo.InvariantCulture) + "\n";
+			return new string(' ', priceText.Length + _rayContainer.TextShift) + priceText;
+		}
+
+		public void UpdateSlopeLine(Slope slope)
+		{
+			double price = _strategy.Instrument.MasterInstrument.Round2TickSize(slope.Price);
+			_ray = _strategy.DrawRay("Slope", false, slope.Bar, price, slope.Bar - 1, price, SlopeLineColor, DashStyle.Solid, 2);
+			_dot = _strategy.DrawDot("slopeDot", false, 0, price, Color.Black);
+			_text = _strategy.DrawText("HCText", TextForma(price), 0, price, Color.Black);
+		}
+
+		public Slope GetLastSlope(int from, int till)
+		{
+			int swing = _strategy.SwingIndicatorBars;
+			till = Math.Min(till, _strategy.Low.Count);
+			if (PositonType == MarketPosition.Long)
+				till = Math.Min(till, _strategy.High.Count);
+			Slope result = new Slope(0, 0);
+			for (int i = from + swing; i < till; i++)
+			{
+				int count = 0;
+				for (int j = 0; j < swing; j++)
+				{
+					if (PositonType == MarketPosition.Short && _strategy.Low[i] < _strategy.Low[i - j])
+						count++;
+
+					else if (PositonType == MarketPosition.Long && _strategy.High[i] > _strategy.High[i - j])
+						count++;
+
+				}
+				if (count == swing - 1)
+				{
+					int barsAgo = i;
+
+					if (PositonType == MarketPosition.Short)
+						result = new Slope(barsAgo, _strategy.Low[barsAgo]);
+					else if (PositonType == MarketPosition.Long)
+						result = new Slope(barsAgo, _strategy.High[barsAgo]);
+					//No need to search forward
+					break;
+				}
+			}
+			//Now we find is it the most small or big local to do not look stupid
+			while (result.Bar + 1 < till)
+			{
+				if (PositonType == MarketPosition.Long)
+				{
+					if (_strategy.High[result.Bar + 1] >= _strategy.High[result.Bar])
+						result = new Slope(result.Bar + 1, _strategy.High[result.Bar + 1]);
+					else
+						break;
+				}
+				else
+				{
+					if (_strategy.Low[result.Bar + 1] <= _strategy.Low[result.Bar])
+						result = new Slope(result.Bar + 1, _strategy.Low[result.Bar + 1]);
+					else
+						break;
+				}
+
+			}
+
+			return result;
+		}
+
+		public double LocalMin(int start, int end)
+		{
+			double result = _strategy.Low[start];
+			for (int i = start; i <= end; i++)
+				result = Math.Min(_strategy.Low[i], result);
+			return result;
+		}
+
+		public double LocalMax(int start, int end)
+		{
+			double result = _strategy.High[start];
+			for (int i = start; i <= end; i++)
+				result = Math.Max(_strategy.High[i], result);
+			return result;
+		}
+
+		public void NewBar()
+		{
+			_currentSlope.Bar++;
+			_lastSlope.Bar++;
+		}
+
+		public void Update(double low, double high)
+		{
+			//If we do not wait for new Slow
+			if (!_isWaitSlope)
+			{
+				if (PositonType == MarketPosition.Long && high > _currentSlope.Price)
+				{
+					_isWaitSlope = true;
+					_lastSlope = _currentSlope;
+					SetStopRay(LocalMin(0, _lastSlope.Bar));
+				}
+				else if (PositonType == MarketPosition.Short && low < _currentSlope.Price)
+				{
+					_isWaitSlope = true;
+					_lastSlope = _currentSlope;
+					SetStopRay(LocalMax(0, _lastSlope.Bar));
+				}
+			}
+			else
+			{
+				int swing = _strategy.SwingIndicatorBars;
+				Slope tempSlope = GetLastSlope(0, _lastSlope.Bar - swing);
+				if (Math.Abs(tempSlope.Price) > 0.00001 && Math.Abs(tempSlope.Price - _lastSlope.Price) > 0.00001)
+				{
+					//That is the moment when we get new  
+					_currentSlope = tempSlope;
+					UpdateSlopeLine(_currentSlope);
+					_isWaitSlope = false;
+
+				}
+			}
+
+		}
+	}
 }
