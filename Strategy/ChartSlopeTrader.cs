@@ -16,7 +16,6 @@ using NinjaTrader.Gui.Chart;
 using Instrument = NinjaTrader.Cbi.Instrument;
 using System.IO;
 using System.Threading;
-
 #endregion
 
 // ReSharper disable once CheckNamespace
@@ -66,7 +65,7 @@ namespace NinjaTrader.Strategy
 
 			try
 			{
-				BarsRequired = 1;//To test even if we got 1 bar on our chart
+				BarsRequired = 2;//To test even if we got 1 bar on our chart
 				AddOtherCurrency();
 				CalculateOnBarClose = false;
 				Enabled = true;
@@ -182,7 +181,9 @@ namespace NinjaTrader.Strategy
 			{
 				if (_strategyState == StrategyState.Enter && position.MarketPosition != MarketPosition.Flat)
 				{
-					SendMailEntryLine();
+					if (_checkBoxEnableShortLongAlert.Checked)
+						SendMailEntryLine();
+
 					_strategyState = StrategyState.Exit;
 				}
 				//here we made decativation after our order worked
@@ -231,10 +232,13 @@ namespace NinjaTrader.Strategy
 				}
 				else
 				{
-					if (distanceToProfit <= distanceToStop)
-						SendMailProfitLine();
-					else
-						SendMailStopLine();
+					if (_checkBoxEnableShortLongAlert.Checked)
+					{
+						if (distanceToProfit <= distanceToStop)
+							SendMailProfitLine();
+						else
+							SendMailStopLine();
+					}
 				}
 			}
 		}
@@ -300,19 +304,13 @@ namespace NinjaTrader.Strategy
 					//Work with our main chart
 					SettingVariables(); // ALWAys FIRST!!!!!
 					if (FirstTickOfBar)
-					{
-						UpdateGraphics();
-						ProportionalDistance = GetDistance();
-					}
+						GraphicAndVariableUpdate();
+
 					if (_currentRayContainer != null)
 					{
-						UpdateRr();
 						if (!_checkBoxOtherCurrency.Checked)
 							ThisInstrumentOrders();
-						if (!_radioButtonNone.Checked)
-							StopToEntryOrParialProfit();
-						if (_checkBoxEnableTrailStop.Checked && FirstTickOfBar)
-							UpdateDts();
+						UpdateFeatures();
 					}
 					//Trading on other instrument
 				}
@@ -323,6 +321,65 @@ namespace NinjaTrader.Strategy
 			{
 				MessageBox.Show(e.Source + e.Data + e.StackTrace);
 			}
+		}
+
+		private void GraphicAndVariableUpdate()
+		{
+			UpdateGraphics();
+			ProportionalDistance = GetDistance();
+		}
+
+		private void UpdateFeatures()
+		{
+			UpdateRr();
+			if (!_radioButtonNone.Checked)
+				StopToEntryOrParialProfit();
+
+			if (_checkBoxEnableTrailStop.Checked && FirstTickOfBar)
+				UpdateDts();
+
+			if (_checkBoxEnableBarEntry.Checked )
+				UpdateEntryLineTouches();
+		}
+
+		private bool _isTouching;
+
+		private void UpdateEntryLineTouches()
+		{
+			if (FirstTickOfBar)
+			{
+				double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
+				double priceLow = Low[1];
+				double priceHigh = High[1];
+
+				if (_currentRayContainer.PositionType == MarketPosition.Long)
+				{
+					if (priceLow <= entryLinePrice)
+						_isTouching = true;
+					else if (priceLow > entryLinePrice && _isTouching)
+						EntryLineNumeriUpdate();
+				}
+				else if (_currentRayContainer.PositionType == MarketPosition.Short)
+				{
+					if (priceHigh>= entryLinePrice)
+					_isTouching = true;
+				else
+					if (priceHigh < entryLinePrice && _isTouching)
+				
+						EntryLineNumeriUpdate();
+				}
+			}
+		}
+
+		private void EntryLineNumeriUpdate()
+		{
+			_isTouching = false;
+			EntryLineTouches--;
+			_numericUpDownBarEntry.Value = EntryLineTouches;
+			_numericUpDownBarEntry.Update();
+			_mainPanel.Invalidate();
+			if (EntryLineTouches <= 1)
+				_checkBoxEnableBarEntry.Checked = false;
 		}
 
 		private double GetDistance()
@@ -419,7 +476,7 @@ namespace NinjaTrader.Strategy
 				SetSLAndTP();
 				_firstOrderSet = false;
 			}
-			if (_strategyState == StrategyState.Enter)
+			if (_strategyState == StrategyState.Enter&&!_checkBoxEnableBarEntry.Checked)
 				UpdateEnterOrders();
 			else if (_strategyState == StrategyState.Exit)
 				UpdateExitOrders();
@@ -434,7 +491,6 @@ namespace NinjaTrader.Strategy
 				CreateLongLimit();
 		}
 
-		private int _activation = 0;
 		private void UpdateExitOrders()
 		{
 			SetSLAndTP();
@@ -576,7 +632,6 @@ namespace NinjaTrader.Strategy
 		{
 			if (_currentRayContainer != null)
 			{
-				UpdateRr();
 				_currentRayContainer.Update();
 				_mainPanel.Invalidate();
 			}
@@ -689,9 +744,6 @@ namespace NinjaTrader.Strategy
 			_radioButtonEntryLine.Enabled = false;
 			_radioButtonPartialProfit.Enabled = false;
 
-			//Making over Stop Line Horizontal Locked and turned off
-			MakeRayHorizontal(_currentRayContainer.StopRay);
-			_currentRayContainer.StopRay.Locked = true;
 			//Full update to see the changes what we made
 			_currentDynamicTrailingStop = new DynamicTrailingStop(this, _currentRayContainer);
 			ChartControl.ChartPanel.Invalidate();
@@ -701,10 +753,9 @@ namespace NinjaTrader.Strategy
 		{
 			if (_currentDynamicTrailingStop != null)
 			{
-				_currentDynamicTrailingStop.NewBar();
 				if(Low.Count>1&&High.Count>1)
 					_currentDynamicTrailingStop.Update(Low[1], High[1]);
-
+				_currentDynamicTrailingStop.NewBar();
 			}
 			else
 				MessageBox.Show("Some Problems with DTS pleas restart it or restart CST");
@@ -887,34 +938,51 @@ namespace NinjaTrader.Strategy
 				MessageBox.Show("You don't have lines to trade with");
 				return;
 			}
-
 			if (_strategyState == StrategyState.NotActive)
 			{
-				_firstOrderSet = true;
-
-				//Making over buttons now Deactivate Buttons
-				_buttonActivate.Text = "DEACTIVATE";
-				_buttonActivate.BackColor = _deactivateColor;
-
-				//Set status
-				_strategyState = StrategyState.Enter;
-
-				//Make visual  Effects
-				_statusLabel.BackColor = _enabledColor;
-				_statusLabel.Text = _currentRayContainer.PositionType == MarketPosition.Long
-					? "Active: Long Position"
-					: "Active: Short Position";
-				_deActivate = false;
+				SetActiveVariables();
+				SetVisualActive();
 			}
 			//If we got Enter or Exit We should wait till them will be changes to what we want from them
 			else
-			{
 				_deActivate = true;
-			}
+
+		}
+
+		private void SetActiveVariables()
+		{
+
+			if (_checkBoxEnableBarEntry.Checked)
+				ActivateBarEntry();
+			_firstOrderSet = true;
+			_strategyState = StrategyState.Enter;
+			_deActivate = false;
+		}
+
+		private void ActivateBarEntry()
+		{
+			EntryLineTouches = (int) _numericUpDownBarEntry.Value;
+			_numericUpDownBarEntry.Enabled = false;
+		}
+
+		private void SetVisualActive()
+		{
+//Making over buttons now Deactivate Buttons
+			_buttonActivate.Text = "DEACTIVATE";
+			_buttonActivate.BackColor = _deactivateColor;
+			//Set status
+			//Make visual  Effects
+			_statusLabel.BackColor = _enabledColor;
+			_statusLabel.Text = _currentRayContainer.PositionType == MarketPosition.Long
+				? "Active: Long Position"
+				: "Active: Short Position";
 		}
 
 		private void DeActivation()
 		{
+
+			if (_checkBoxEnableBarEntry.Checked)
+				Deactivate();
 			if (_checkBoxOtherCurrency.Checked)
 			{
 				if (_strategyState == StrategyState.Exit)
@@ -932,7 +1000,7 @@ namespace NinjaTrader.Strategy
 				//if we want to enter we chancel order
 				if (_strategyState == StrategyState.Enter)
 				{
-					//if it is not cancalled yet we cancel it
+					//if it is not canceled yet we cancel it
 					if (_currentOrder.OrderState != OrderState.Cancelled)
 						CancelAllOrders(true, false);
 					//But in other case we cleaning after our self
@@ -962,6 +1030,11 @@ namespace NinjaTrader.Strategy
 			//For other currancy it is very easy
 			if (_deActivate) return;
 			//here we set our position as default
+			Deactivate();
+		}
+
+		private void Deactivate()
+		{
 			_strategyState = StrategyState.NotActive;
 			//Set our form to not active
 			SetVisualToNotActive();
@@ -971,6 +1044,7 @@ namespace NinjaTrader.Strategy
 		{
 			if (_currentRayContainer != null && _currentRayContainer.IsAlternativeLine)
 				_currentRayContainer.RemoveAlternativeRay();
+			_checkBoxEnableBarEntry.Enabled = true;
 
 			_buttonActivate.Text = "ACTIVATE";
 			_buttonActivate.BackColor = _activateColor;
@@ -1344,7 +1418,7 @@ namespace NinjaTrader.Strategy
 		private Label _label4;
 		private NumericUpDown _numericUpDownBarEntry;
 		private CheckBox _checkBoxEnableBarEntry;
-		private CheckBox _checkBoxEnableMailGlobal;
+		private CheckBox _checkBoxEnableShortLongAlert;
 		private Label _stopToEnterMsgLabel;
 		private Label _rrLabel;
 		private Label _rrNamelabel;
@@ -1393,7 +1467,7 @@ namespace NinjaTrader.Strategy
 			_label4 = new Label();
 			_numericUpDownBarEntry = new NumericUpDown();
 			_checkBoxEnableBarEntry = new CheckBox();
-			_checkBoxEnableMailGlobal = new CheckBox();
+			_checkBoxEnableShortLongAlert = new CheckBox();
 			_groupBoxTrailStop = new GroupBox();
 			_label9 = new Label();
 			_label8 = new Label();
@@ -1596,7 +1670,6 @@ namespace NinjaTrader.Strategy
 			// groupBox_PartialProfit
 			// 
 			_groupBoxPartialProfit.BackColor = SystemColors.ControlLight;
-			_groupBoxPartialProfit.Controls.Add(_checkBoxEnablePartialProfitAlert);
 			_groupBoxPartialProfit.Controls.Add(_buttonCloseHalfPosition);
 			_groupBoxPartialProfit.Controls.Add(_checkBoxEnablePartialProfit);
 			_groupBoxPartialProfit.Location = new Point(6, 374);
@@ -1607,18 +1680,6 @@ namespace NinjaTrader.Strategy
 			_groupBoxPartialProfit.TabIndex = 5;
 			_groupBoxPartialProfit.TabStop = false;
 			_groupBoxPartialProfit.Text = "50 % Partial Take Profit";
-			// 
-			// checkBox_EnablePartialProfitAlert
-			// 
-			_checkBoxEnablePartialProfitAlert.AutoSize = true;
-			_checkBoxEnablePartialProfitAlert.Location = new Point(8, 68);
-			_checkBoxEnablePartialProfitAlert.Margin = new Padding(2);
-			_checkBoxEnablePartialProfitAlert.Name = "checkBox_EnablePartialProfitAlert";
-			_checkBoxEnablePartialProfitAlert.Size = new Size(111, 17);
-			_checkBoxEnablePartialProfitAlert.TabIndex = 3;
-			_checkBoxEnablePartialProfitAlert.Text = "Enable Email Alert";
-			_checkBoxEnablePartialProfitAlert.UseVisualStyleBackColor = true;
-			_checkBoxEnablePartialProfitAlert.CheckedChanged += _checkBoxEnablePartialProfitAlert_CheckedChanged;
 			// 
 			// button_CloseHalfPosition
 			// 
@@ -1760,12 +1821,12 @@ namespace NinjaTrader.Strategy
 			// groupBox0
 			//
 			// 
-			_groupBoxMail.Controls.Add(_checkBoxEnableMailGlobal);
+			_groupBoxMail.Controls.Add(_checkBoxEnableShortLongAlert);
 			_groupBoxMail.Location = new Point(6, 780);
 			_groupBoxMail.Margin = new Padding(2);
 			_groupBoxMail.Name = "groupBox0";
 			_groupBoxMail.Padding = new Padding(2);
-			_groupBoxMail.Size = new Size(154, 47);
+			_groupBoxMail.Size = new Size(154, 120);
 			_groupBoxMail.TabIndex = 50;
 			_groupBoxMail.TabStop = false;
 			_groupBoxMail.Text = "Mail Settings";
@@ -1803,18 +1864,45 @@ namespace NinjaTrader.Strategy
 			_checkBoxEnableBarEntry.TabIndex = 5;
 			_checkBoxEnableBarEntry.Text = "Enable";
 			_checkBoxEnableBarEntry.UseVisualStyleBackColor = true;
-			// 			 
-			// checkBox_EnableBarEntry
+			_checkBoxEnableBarEntry.CheckedChanged += _checkBoxEnableBarEntry_CheckedChanged; 
+				// 			 
+				// checkBox_EnableBarEntry
+				// 
+			_checkBoxEnableShortLongAlert.AutoSize = true;
+			_checkBoxEnableShortLongAlert.Location = new Point(10, 20);
+			_checkBoxEnableShortLongAlert.Margin = new Padding(2);
+			_checkBoxEnableShortLongAlert.Name = "checkBox_EnableMailEntry";
+			_checkBoxEnableShortLongAlert.Size = new Size(150, 17);
+			_checkBoxEnableShortLongAlert.TabIndex = 5;
+			_checkBoxEnableShortLongAlert.Text = "Enable LONG/SHORT";
+			_checkBoxEnableShortLongAlert.UseVisualStyleBackColor = true;
+			_checkBoxEnableShortLongAlert.Checked = true;
 			// 
-			_checkBoxEnableMailGlobal.AutoSize = true;
-			_checkBoxEnableMailGlobal.Location = new Point(10, 20);
-			_checkBoxEnableMailGlobal.Margin = new Padding(2);
-			_checkBoxEnableMailGlobal.Name = "checkBox_EnableMailEntry";
-			_checkBoxEnableMailGlobal.Size = new Size(59, 17);
-			_checkBoxEnableMailGlobal.TabIndex = 5;
-			_checkBoxEnableMailGlobal.Text = "Enable";
-			_checkBoxEnableMailGlobal.UseVisualStyleBackColor = true;
-			_checkBoxEnableMailGlobal.Checked = true;
+			// checkBox_EnablePartialProfitAlert
+			// 
+			_groupBoxMail.Controls.Add(_checkBoxEnablePartialProfitAlert);
+			_checkBoxEnablePartialProfitAlert.AutoSize = true;
+			_checkBoxEnablePartialProfitAlert.Location = new Point(10, 40);
+			_checkBoxEnablePartialProfitAlert.Margin = new Padding(2);
+			_checkBoxEnablePartialProfitAlert.Name = "checkBox_EnablePartialProfitAlert";
+			_checkBoxEnablePartialProfitAlert.Size = new Size(150, 17);
+			_checkBoxEnablePartialProfitAlert.TabIndex = 5;
+			_checkBoxEnablePartialProfitAlert.Text = "Enable 50% Partial Profit";
+			_checkBoxEnablePartialProfitAlert.UseVisualStyleBackColor = true;
+			_checkBoxEnablePartialProfitAlert.CheckedChanged += _checkBoxEnablePartialProfitAlert_CheckedChanged;
+			// 
+			// checkBox_EnableTrailStopAlert
+			// 
+			_groupBoxMail.Controls.Add(_checkBoxEnableTrailStopAlert);
+			_checkBoxEnableTrailStopAlert.AutoSize = true;
+			_checkBoxEnableTrailStopAlert.Location = new Point(10, 60);
+			_checkBoxEnableTrailStopAlert.Margin = new Padding(2);
+			_checkBoxEnableTrailStopAlert.Name = "checkBox_EnableTrailStopAlert";
+			_checkBoxEnableTrailStopAlert.Size = new Size(150, 17);
+			_checkBoxEnableTrailStopAlert.TabIndex = 5;
+			_checkBoxEnableTrailStopAlert.Text = "Enable DTS";
+			_checkBoxEnableTrailStopAlert.UseVisualStyleBackColor = true;
+			_checkBoxEnableTrailStopAlert.CheckedChanged += _checkBoxEnableTrailStopAlert_CheckedChanged;
 			// 
 			// groupBox_TrailStop
 			// 
@@ -1824,7 +1912,6 @@ namespace NinjaTrader.Strategy
 			_groupBoxTrailStop.Controls.Add(_label7);
 			_groupBoxTrailStop.Controls.Add(_numericUpDownSwingIndicatorBars);
 			_groupBoxTrailStop.Controls.Add(_numericUpDownStopLevelTicks);
-			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStopAlert);
 			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStop);
 			_groupBoxTrailStop.Controls.Add(_numericUpDownHorizontalTicks);
 			_groupBoxTrailStop.Location = new Point(6, 597);
@@ -1917,18 +2004,6 @@ namespace NinjaTrader.Strategy
 				0,
 				0
 			});
-			// 
-			// checkBox_EnableTrailStopAlert
-			// 
-			_checkBoxEnableTrailStopAlert.AutoSize = true;
-			_checkBoxEnableTrailStopAlert.Location = new Point(9, 35);
-			_checkBoxEnableTrailStopAlert.Margin = new Padding(2);
-			_checkBoxEnableTrailStopAlert.Name = "checkBox_EnableTrailStopAlert";
-			_checkBoxEnableTrailStopAlert.Size = new Size(111, 17);
-			_checkBoxEnableTrailStopAlert.TabIndex = 5;
-			_checkBoxEnableTrailStopAlert.Text = "Enable Email Alert";
-			_checkBoxEnableTrailStopAlert.UseVisualStyleBackColor = true;
-			_checkBoxEnableTrailStopAlert.CheckedChanged += _checkBoxEnableTrailStopAlert_CheckedChanged;
 			// 
 			// checkBox_EnableTrailStop
 			// 
@@ -2129,6 +2204,26 @@ namespace NinjaTrader.Strategy
 			ChartControl.Controls.Add(_mainPanel);
 		}
 
+		private void _checkBoxEnableBarEntry_CheckedChanged(object sender, EventArgs e)
+		{
+			if (_strategyState == StrategyState.Enter)
+			{
+				if (_checkBoxEnableBarEntry.Checked)
+				{
+					CancelAllOrders(true, false);
+					_currentOrder = null;
+					//Some changes
+					ActivateBarEntry();	
+				}
+				else
+				{
+					_numericUpDownBarEntry.Enabled = true;
+					_isTouching = false;
+				}
+			}
+			
+		}
+
 		private void CheckBoxOtherCurrencyOnCheckedChanged(object sender, EventArgs eventArgs)
 		{
 			_textBoxOtherCurrency.Enabled = _checkBoxOtherCurrency.Checked;
@@ -2148,6 +2243,7 @@ namespace NinjaTrader.Strategy
 		private string _eMailLogin = "alfaa.gen";
 		private string _eMailPassword = "Train@concentration";
 		private bool _doNoRemoveAltLine;
+		private int EntryLineTouches=0;
 		public double ProportionalDistance { get;  set; }
 		
 
@@ -2178,13 +2274,10 @@ namespace NinjaTrader.Strategy
 		
 		private void SendMail(string topic, string text)
 		{
-			if (_checkBoxEnableMailGlobal.Checked)
-			{
 				SendingText = text;
 				SendingTopic = "CST Alert: " + topic;
 				Thread mailSendingThread = new Thread(MailSender);
 				mailSendingThread.Start();
-			}
 		}
 
 		private void MailSender()
@@ -2217,7 +2310,7 @@ namespace NinjaTrader.Strategy
 				LinkedResource inline = new LinkedResource(stream, MediaTypeNames.Image.Jpeg);
 				inline.ContentId = Guid.NewGuid().ToString();
 
-				string htmlBody = "<html><body><br><img src=\"cid:filename\">" + SendingText +
+				string htmlBody = "<html><body>" + SendingText +
 				                  String.Format(@"<img src=""cid:{0}"" />", inline.ContentId) +
 				                  "</body></html>";
 
@@ -2280,24 +2373,23 @@ namespace NinjaTrader.Strategy
 
 			//Now Adding formated text
 
-			textResult.AppendFormat("<p>Action:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}</p>", action);
-			textResult.AppendFormat("<p>Time:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}</p>", time);
+			textResult.AppendFormat("<pre>Action:		{0}</pre>", action);
+			textResult.AppendFormat("<pre>Time:		{0}</pre>", time);
 
-			textResult.AppendFormat("<p>Symbol:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}</p>", symbol);
+			textResult.AppendFormat("<pre>Symbol:		{0}</pre>", symbol);
 
-			if (isPartialProfit)
-				textResult.AppendFormat("<p>Quantity:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}</p>", _numericUpDownQuantity.Value/2);
-			else
-				textResult.AppendFormat("<p>Quantity:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}</p>", _numericUpDownQuantity.Value);
+		if (isPartialProfit)
+			textResult.AppendFormat("<pre>Quantity:	{0}</pre>", _numericUpDownQuantity.Value/2);
+		else
+			textResult.AppendFormat("<pre>Quantity:	{0}</pre>", _numericUpDownQuantity.Value);
 
-			textResult.AppendFormat("<p>Position:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}</p>", _currentRayContainer.PositionType);
+			textResult.AppendFormat("<pre>Position:	{0}</pre>", _currentRayContainer.PositionType);
 
-			if(!isEntry&&!isPartialProfit)
-				textResult.AppendFormat(
-					"<p>Profit:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}&nbsp;USD &nbsp;AND&nbsp;{1}&nbsp;%</p>",
-					_profitLoss, _profitPercent*100);
-			if(isPartialProfit)
-				textResult.AppendFormat( "<p>Profit:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}&nbsp;USD &nbsp;AND&nbsp;{1}&nbsp;%</p>", _profitLoss*0.5, _profitPercent*50); 
+		if(!isEntry&&!isPartialProfit)
+			textResult.AppendFormat( "<pre>Profit:		{0}USD & {1}%</pre>",
+			_profitLoss, _profitPercent*100);
+		if(isPartialProfit)
+			textResult.AppendFormat( "<p>Profit:		{0}USD  & {1}%</p>", _profitLoss*0.5, _profitPercent*50); 
 
 			return textResult.ToString();
 		}
@@ -2375,7 +2467,7 @@ namespace NinjaTrader.Strategy
 			//Initialization global variables
 			_strategy = strategy;
 			PositionType = marketPosition;
-			Distance = strategy.ProportionalDistance; 
+			Distance = strategy.ProportionalDistance<_strategy.TickSize*3?3*strategy.TickSize:strategy.ProportionalDistance; 
 			IsAlternativeLine = false;
 
 			//Set some local variables
@@ -2553,7 +2645,6 @@ namespace NinjaTrader.Strategy
 		{
 			public int Bar;
 			public double Price;
-
 			public Slope(int bar, double price)
 			{
 				Bar = bar;
@@ -2574,29 +2665,20 @@ namespace NinjaTrader.Strategy
 
 		public DynamicTrailingStop(ChartSlopeTrader strategy, RayContainer rayContainer)
 		{
+			//Setting the variables
 			_strategy = strategy;
 			_rayContainer = rayContainer;
 			PositonType = rayContainer.PositionType;
-			_currentSlope = GetLastSlope(0, 255);
-			if (Math.Abs(_currentSlope.Price) > 0.0001)
-			{
-				UpdateSlopeLine(_currentSlope);
-				SetStopRay(rayContainer.PositionType == MarketPosition.Long
-					? LocalMin(0, _currentSlope.Bar)
-					: LocalMax(0, _currentSlope.Bar));
-				if(strategy.High.Count>1&&strategy.Low.Count>1)
-				Update(_strategy.Low[1], _strategy.High[1]);
-			}
-			else
-			{
-				MessageBox.Show("First Slope with such configuration cannot be find\n Reset configuration and try again");
-			}
+			_isWaitSlope = true;
+			_lastSlope = new Slope(0, 0);
+
 		}
 
 		~DynamicTrailingStop()
 		{
 			if (_ray != null)
 			{
+				_rayContainer.StopRay.Locked = false;
 				_strategy.RemoveDrawObject(_ray);
 				_strategy.RemoveDrawObject(_dot);
 				_strategy.RemoveDrawObject(_text);
@@ -2610,7 +2692,8 @@ namespace NinjaTrader.Strategy
 			_rayContainer.StopRay.Anchor1Y = price;
 			_rayContainer.StopRay.Anchor2Y = price;
 			_rayContainer.StopRay.Anchor1BarsAgo = _currentSlope.Bar;
-			_rayContainer.StopRay.Anchor2BarsAgo = _currentSlope.Bar - 1;
+			_rayContainer.StopRay.Anchor2BarsAgo = _currentSlope.Bar -1;
+			_rayContainer.StopRay.Locked = true;
 
 		}
 
@@ -2631,9 +2714,11 @@ namespace NinjaTrader.Strategy
 		public Slope GetLastSlope(int from, int till)
 		{
 			int swing = _strategy.SwingIndicatorBars;
+
 			till = Math.Min(till, _strategy.Low.Count);
 			if (PositonType == MarketPosition.Long)
 				till = Math.Min(till, _strategy.High.Count);
+
 			Slope result = new Slope(0, 0);
 			for (int i = from + swing; i < till; i++)
 			{
@@ -2712,17 +2797,17 @@ namespace NinjaTrader.Strategy
 				if (PositonType == MarketPosition.Long && high > _currentSlope.Price)
 				{
 					_isWaitSlope = true;
-					_lastSlope = _currentSlope;
 					SetStopRay(LocalMin(0, _lastSlope.Bar));
+					_lastSlope = _currentSlope;
 				}
 				else if (PositonType == MarketPosition.Short && low < _currentSlope.Price)
 				{
 					_isWaitSlope = true;
-					_lastSlope = _currentSlope;
 					SetStopRay(LocalMax(0, _lastSlope.Bar));
+					_lastSlope = _currentSlope;
 				}
 			}
-			else
+			else//We wait for a slope
 			{
 				int swing = _strategy.SwingIndicatorBars;
 				Slope tempSlope = GetLastSlope(0, _lastSlope.Bar - swing);
