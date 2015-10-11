@@ -334,10 +334,8 @@ namespace NinjaTrader.Strategy
 			UpdateRr();
 			if (!_radioButtonNone.Checked)
 				StopToEntryOrParialProfit();
-
 			if (_checkBoxEnableTrailStop.Checked )
 				UpdateDts();
-
 			if (_checkBoxEnableBarEntry.Checked )
 				UpdateEntryLineTouches();
 		}
@@ -432,11 +430,17 @@ namespace NinjaTrader.Strategy
 
 		private void OtherInstrumentOrders()
 		{
+			OtherCurrencyUpdateProfitValue();
 			if (_strategyState == StrategyState.Enter)
 				OtherInstrumentEntryOrder();
 			else if (_strategyState == StrategyState.Exit)
 				OtherInstrumentExitOrders();
 
+		}
+		private void OtherCurrencyUpdateProfitValue()
+		{
+			_ohterProfitLoss = Math.Round(Position.GetProfitLoss(_currentPrice, PerformanceUnit.Currency), 4);
+			_otherProfitPercent = Math.Round(Position.GetProfitLoss(_currentPrice, PerformanceUnit.Percent), 4);
 		}
 
 		private void OtherInstrumentEntryOrder()
@@ -566,6 +570,7 @@ namespace NinjaTrader.Strategy
 			_doNoRemoveAltLine = true;
 			_checkBoxEnablePartialProfit.Checked = false;
 			_doNoRemoveAltLine = false;
+			_wasPrtialProfit = true;
 		}
 
 		private void StopToEntryOrParialProfit()
@@ -961,6 +966,7 @@ namespace NinjaTrader.Strategy
 			_firstOrderSet = true;
 			_strategyState = StrategyState.Enter;
 			_deActivate = false;
+			_wasPrtialProfit = false;
 		}
 
 		private void ActivateBarEntry()
@@ -1048,12 +1054,18 @@ namespace NinjaTrader.Strategy
 		{
 			if (_currentRayContainer != null && _currentRayContainer.IsAlternativeLine)
 				_currentRayContainer.RemoveAlternativeRay();
+			if (_currentDynamicTrailingStop != null)
+			{
+				_currentDynamicTrailingStop.Clear();
+				_currentDynamicTrailingStop = null;
+			}
 			_checkBoxEnableBarEntry.Enabled = true;
 
 			_buttonActivate.Text = "ACTIVATE";
 			_buttonActivate.BackColor = _activateColor;
 			_statusLabel.BackColor = _disabledColor;
 			_statusLabel.Text = "Not Active";
+
 		}
 
 		private bool _closeHalfNow;
@@ -1324,7 +1336,7 @@ namespace NinjaTrader.Strategy
 		{
 			get
 			{
-				if (_numericUpDownSwingIndicatorBars != null) return (int)_numericUpDownSwingIndicatorBars.Value-1;
+				if (_numericUpDownSwingIndicatorBars != null) return (int)_numericUpDownSwingIndicatorBars.Value;
 				return 1;
 			}
 		}
@@ -2248,6 +2260,9 @@ namespace NinjaTrader.Strategy
 //		private string _eMailPassword = "Train@concentration";
 		private bool _doNoRemoveAltLine;
 		private int EntryLineTouches=0;
+		private double _ohterProfitLoss;
+		private double _otherProfitPercent;
+		private bool _wasPrtialProfit;
 		public double ProportionalDistance { get;  set; }
 		
 
@@ -2348,7 +2363,7 @@ namespace NinjaTrader.Strategy
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show(ex.ToString());
+				MessageBox.Show("We can't send e-mail");
 			}
 		}
 
@@ -2373,7 +2388,7 @@ namespace NinjaTrader.Strategy
 		{
 			StringBuilder textResult = new StringBuilder();
 			string time = DateTime.Now.ToString("HH:mm"); ;
-			string symbol = Position.Instrument.FullName;
+			string symbol = _checkBoxOtherCurrency.Checked? _otherInstrumentName: Position.Instrument.FullName;
 
 			//Now Adding formated text
 
@@ -2389,11 +2404,15 @@ namespace NinjaTrader.Strategy
 
 			textResult.AppendFormat("<pre>Position:	{0}</pre>", _currentRayContainer.PositionType);
 
-		if(!isEntry&&!isPartialProfit)
-			textResult.AppendFormat( "<pre>Profit:		{0}USD & {1}%</pre>",
-			_profitLoss, _profitPercent*100);
-		if(isPartialProfit)
-			textResult.AppendFormat( "<p>Profit:		{0}USD  & {1}%</p>", _profitLoss*0.5, _profitPercent*50); 
+			if (!_checkBoxOtherCurrency.Checked)
+			{
+				if (!isEntry && !isPartialProfit && !_wasPrtialProfit)
+					textResult.AppendFormat("<pre>Profit:		{0}USD & {1}%</pre>", _profitLoss, _profitPercent*100);
+				if (isPartialProfit || _wasPrtialProfit)
+					textResult.AppendFormat("<p>Profit:		{0}USD  & {1}%</p>", _profitLoss*0.5, _profitPercent*50);
+			}
+			else
+					textResult.AppendFormat("<pre>Profit:		{0}USD & {1}%</pre>", _ohterProfitLoss, _otherProfitPercent*100);
 
 			return textResult.ToString();
 		}
@@ -2666,6 +2685,7 @@ namespace NinjaTrader.Strategy
 		private IRay _ray;
 		private IDot _dot;
 		private IText _text;
+		private int _lastMinimumOrMaximum;
 
 		public DynamicTrailingStop(ChartSlopeTrader strategy, RayContainer rayContainer)
 		{
@@ -2674,6 +2694,7 @@ namespace NinjaTrader.Strategy
 			_rayContainer = rayContainer;
 			PositonType = rayContainer.PositionType;
 			_isWaitSlope = true;
+			_lastMinimumOrMaximum = 0;
 			_lastSlope = new Slope(0, 0);
 			UpdateEntry(_strategy.Low[2],_strategy.High[2]);
 			NewBar();
@@ -2683,15 +2704,17 @@ namespace NinjaTrader.Strategy
 
 		~DynamicTrailingStop()
 		{
-			if (_ray != null)
-			{
+				Clear();
+		}
+
+		public void Clear()
+		{
+				SetStopRay(_strategy._currentPrice);
 				_rayContainer.StopRay.Locked = false;
 				_strategy.RemoveDrawObject(_ray);
 				_strategy.RemoveDrawObject(_dot);
 				_strategy.RemoveDrawObject(_text);
-				_strategy.ChartControl.ChartPanel.Invalidate();
-			}
-
+			_strategy.ChartControl.ChartPanel.Invalidate();
 		}
 
 		private void SetStopRay(double price)
@@ -2778,17 +2801,41 @@ namespace NinjaTrader.Strategy
 
 		public double LocalMin(int start, int end)
 		{
+			int postion =0;
+			return LocalMin(start, end, ref postion);
+		}
+
+		public double LocalMin(int start, int end, ref int position)
+		{
 			double result = _strategy.Low[start];
 			for (int i = start; i <= end; i++)
-				result = Math.Min(_strategy.Low[i], result);
+			{
+				if (result<=_strategy.Low[i])
+				{
+					result = _strategy.Low[i];
+					position = i;
+				}
+			}
 			return result;
 		}
 
 		public double LocalMax(int start, int end)
 		{
+			int position = 0;
+			return LocalMax(start, end,ref position);
+		}
+
+		public double LocalMax(int start, int end, ref int position)
+		{
 			double result = _strategy.High[start];
 			for (int i = start; i <= end; i++)
-				result = Math.Max(_strategy.High[i], result);
+			{
+				if (_strategy.High[i]>=result)
+				{
+					result = _strategy.High[i];
+					position = i;
+				}
+			}
 			return result;
 		}
 
@@ -2796,6 +2843,7 @@ namespace NinjaTrader.Strategy
 		{
 			_currentSlope.Bar++;
 			_lastSlope.Bar++;
+			_lastMinimumOrMaximum = 0;
 		}
 
 		public void UpdateFirstBar()
@@ -2804,9 +2852,10 @@ namespace NinjaTrader.Strategy
 			if(_isWaitSlope)//We wait for a slope
 			{
 				int swing = _strategy.SwingIndicatorBars;
-				Slope tempSlope = GetLastSlope(0, _lastSlope.Bar - swing);
+				Slope tempSlope = GetLastSlope(0, _lastMinimumOrMaximum);
 				if (Math.Abs(tempSlope.Price) > 0.00001 && Math.Abs(tempSlope.Price - _lastSlope.Price) > 0.00001)
 				{
+					if((PositonType == MarketPosition.Long&&tempSlope.Price>_lastSlope.Price)||(PositonType==MarketPosition.Short&&tempSlope.Price<_lastSlope.Price))
 					//That is the moment when we get new  
 					_currentSlope = tempSlope;
 					UpdateSlopeLine(_currentSlope);
@@ -2823,13 +2872,13 @@ namespace NinjaTrader.Strategy
 				if (PositonType == MarketPosition.Long && high > _currentSlope.Price+_strategy.SwingHorizontal)
 				{
 					_isWaitSlope = true;
-					SetStopRay(LocalMin(0, _lastSlope.Bar)-_strategy.StopLevel);
+					SetStopRay(LocalMin(0, _lastSlope.Bar, ref _lastMinimumOrMaximum )-_strategy.StopLevel);
 					_lastSlope = _currentSlope;
 				}
 				else if (PositonType == MarketPosition.Short && low < _currentSlope.Price-_strategy.SwingHorizontal)
 				{
 					_isWaitSlope = true;
-					SetStopRay(LocalMax(0, _lastSlope.Bar)+_strategy.StopLevel);
+					SetStopRay(LocalMax(0, _lastSlope.Bar, ref _lastMinimumOrMaximum)+_strategy.StopLevel);
 					_lastSlope = _currentSlope;
 				}
 			}
