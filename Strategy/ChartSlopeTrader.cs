@@ -385,7 +385,7 @@ namespace NinjaTrader.Strategy
 
 		private double GetMaxPrice()
 		{
-			int length = Math.Min(30, High.Count-1);
+			int length = Math.Min(8, High.Count-1);
 			double result = High[0];
 			for (int i = 0; i < length; i++)
 				result = Math.Max(result, High[i]);
@@ -394,7 +394,7 @@ namespace NinjaTrader.Strategy
 
 		private double GetMinPrice()
 		{
-			int length = Math.Min(30, Low.Count-1);
+			int length = Math.Min(8, Low.Count-1);
 			double result = Low[0];
 			for (int i = 0; i < length; i++)
 				result = Math.Min(result, Low[i]);
@@ -719,9 +719,12 @@ namespace NinjaTrader.Strategy
 			_radioButtonNone.Checked = true;
 
 			//Removing lock from stopRay if we got it 
-			if (_currentRayContainer != null) _currentRayContainer.StopRay.Locked = false;
-			_currentDynamicTrailingStop = null;
-
+			if (_currentRayContainer != null)
+			{
+				_currentRayContainer.StopRay.Locked = false;
+				_currentDynamicTrailingStop.Clear();
+				_currentDynamicTrailingStop = null;
+			}
 		}
 
 		private void EnableDts()
@@ -2354,7 +2357,7 @@ namespace NinjaTrader.Strategy
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show("We can't send e-mail");
+				MessageBox.Show("We can't send e-mail"+ex.StackTrace);
 				Thread.CurrentThread.Abort();
 			}
 		}
@@ -2378,35 +2381,45 @@ namespace NinjaTrader.Strategy
 
 		private string TextFormater(string action, bool isEntry, bool isPartialProfit)
 		{
-			StringBuilder textResult = new StringBuilder();
-			string time = DateTime.Now.ToString("HH:mm"); ;
-			string symbol = _checkBoxOtherCurrency.Checked? _otherInstrumentName: Position.Instrument.FullName;
-
-			//Now Adding formated text
-
-			textResult.AppendFormat("<pre>Action:		{0}</pre>", action);
-			textResult.AppendFormat("<pre>Time:		{0}</pre>", time);
-
-			textResult.AppendFormat("<pre>Symbol:		{0}</pre>", symbol);
-
-		if (isPartialProfit)
-			textResult.AppendFormat("<pre>Quantity:	{0}</pre>", (int)_numericUpDownQuantity.Value/2);
-		else
-			textResult.AppendFormat("<pre>Quantity:	{0}</pre>", _numericUpDownQuantity.Value);
-
-			textResult.AppendFormat("<pre>Position:	{0}</pre>", _currentRayContainer.PositionType);
-
-			if (!_checkBoxOtherCurrency.Checked)
+			try
 			{
-				if (!isEntry && !isPartialProfit && !_wasPrtialProfit)
-					textResult.AppendFormat("<pre>Profit:		{0}USD & {1}%</pre>", _profitLoss, _profitPercent*100);
-				if (isPartialProfit || _wasPrtialProfit)
-					textResult.AppendFormat("<p>Profit:		{0}USD  & {1}%</p>", _profitLoss*0.5, _profitPercent*50);
-			}
-			else
-					textResult.AppendFormat("<pre>Profit:		{0}USD & {1}%</pre>", _ohterProfitLoss, _otherProfitPercent*100);
+				StringBuilder textResult = new StringBuilder();
+				string time = DateTime.Now.ToString("HH:mm"); ;
+				string symbol = _checkBoxOtherCurrency.Checked? _otherInstrumentName: Position.Instrument.FullName;
 
+				//Now Adding formated text
+
+				textResult.AppendFormat("<pre>Action:		{0}</pre>", action);
+				textResult.AppendFormat("<pre>Time:		{0}</pre>", time);
+
+				textResult.AppendFormat("<pre>Symbol:		{0}</pre>", symbol);
+
+				if (isPartialProfit||_wasPrtialProfit)
+					textResult.AppendFormat("<pre>Quantity:	{0}</pre>", (int)_numericUpDownQuantity.Value/2);
+				else
+					textResult.AppendFormat("<pre>Quantity:	{0}</pre>", _numericUpDownQuantity.Value);
+
+				textResult.AppendFormat("<pre>Position:	{0}</pre>", _currentRayContainer.PositionType);
+
+				if (!_checkBoxOtherCurrency.Checked)
+				{
+					if (!isEntry && !isPartialProfit&&!_wasPrtialProfit)
+						textResult.AppendFormat("<pre>Profit:		{0}USD & {1}%</pre>", _profitLoss, _profitPercent*100);
+					else if (isPartialProfit)
+						textResult.AppendFormat("<p>Profit:		{0}USD  & {1}%</p>", _profitLoss*0.5, _profitPercent*50);
+					else if (_wasPrtialProfit)
+						textResult.AppendFormat("<p>Profit:		{0}USD  & {1}%</p>", _profitLoss, _profitPercent*50);
+				}
+				else
+					textResult.AppendFormat("<pre>Profit:		{0}USD & {1}%</pre>", _ohterProfitLoss, _otherProfitPercent*100);
 			return textResult.ToString();
+			}
+			catch (Exception e)
+			{
+				MessageBox.Show("Problems with formating text");
+			}
+			return "some problem with this e-mail text";
+
 		}
 
 
@@ -2602,7 +2615,9 @@ namespace NinjaTrader.Strategy
 			}
 			ClosingHalf = true;
 			//Distance we will count from profit Ray
-			double distance = (_tpDot.Y - _eDot.Y) / 2;
+			double distance = (_tpDot.Y - _strategy._currentPrice) / 2;
+			if (!exit)
+				distance = (_tpDot.Y - _eDot.Y) / 2;
 			//Drawing the ray
 			HalfCloseRay = _strategy.DrawRay("HalfClose", false,
 				(ProfitTargetRay.Anchor1BarsAgo),
@@ -2839,18 +2854,18 @@ namespace NinjaTrader.Strategy
 		public void UpdateFirstBar()
 		{ 
 			//If we do not wait for new Slow
-			if(_isWaitSlope)//We wait for a slope
+			if (_isWaitSlope) //We wait for a slope
 			{
 				int swing = _strategy.SwingIndicatorBars;
 				Slope tempSlope = GetLastSlope(0, _lastMinimumOrMaximum);
 				if (Math.Abs(tempSlope.Price) > 0.00001 && Math.Abs(tempSlope.Price - _lastSlope.Price) > 0.00001)
 				{
-					if((PositonType == MarketPosition.Long&&tempSlope.Price>_lastSlope.Price)||(PositonType==MarketPosition.Short&&tempSlope.Price<_lastSlope.Price))
-					//That is the moment when we get new  
-					_currentSlope = tempSlope;
+					if ((PositonType == MarketPosition.Long && tempSlope.Price > _lastSlope.Price) ||
+					    (PositonType == MarketPosition.Short && tempSlope.Price < _lastSlope.Price))
+						//That is the moment when we get new  
+						_currentSlope = tempSlope;
 					UpdateSlopeLine(_currentSlope);
 					_isWaitSlope = false;
-
 				}
 			}
 		}
