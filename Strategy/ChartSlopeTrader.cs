@@ -2292,12 +2292,12 @@ namespace NinjaTrader.Strategy
 		private double _profitLoss;
 		private double _profitPercent;
 
-//		private string _mailAddress = "daniel@danielwardzynski.com";
-//		private string _eMailLogin = "chartslopetrader";
-//		private string _eMailPassword = "123qwe456rty";
-		private string _mailAddress = "comman.games@outlook.com";
-		private string _eMailLogin = "alfaa.gen";
-		private string _eMailPassword = "Train@concentration";
+		private string _mailAddress = "daniel@danielwardzynski.com";
+		private string _eMailLogin = "chartslopetrader";
+		private string _eMailPassword = "123qwe456rty";
+//		private string _mailAddress = "comman.games@outlook.com";
+//		private string _eMailLogin = "alfaa.gen";
+//		private string _eMailPassword = "Train@concentration";
 		private bool _doNoRemoveAltLine;
 		private int EntryLineTouches=0;
 		private double _ohterProfitLoss;
@@ -2739,7 +2739,6 @@ namespace NinjaTrader.Strategy
 		private IDot _dot;
 		private IText _text;
 		private int _lastMinimumOrMaximum;
-		public bool _firstSlope;
 
 		public DynamicTrailingStop(ChartSlopeTrader strategy, RayContainer rayContainer)
 		{
@@ -2750,10 +2749,17 @@ namespace NinjaTrader.Strategy
 			_isWaitSlope = true;
 			_lastMinimumOrMaximum = 0;
 			_lastSlope = new Slope(0, 0);
-			_firstSlope = true;
-			UpdateEntry(strategy._currentPrice);
-			NewBar();
-			NewBar();
+
+			//Getting the first slope
+			Slope tempSlope = GetFirstStlope(0, Math.Min(32,strategy.Low.Count-1));
+			if (Math.Abs(tempSlope.Price) < 0.01)
+				return;
+
+			_currentSlope = tempSlope;
+			UpdateSlopeLine(_currentSlope);
+			_isWaitSlope = false;
+			_strategy.SendMail_dtsNewSlopeLineNew(_currentSlope.Price);
+
 		}
 
 		~DynamicTrailingStop()
@@ -2796,6 +2802,11 @@ namespace NinjaTrader.Strategy
 			_strategy.ChartControl.ChartPanel.Invalidate();
 		}
 
+		public Slope GetFirstStlope(int from, int till)
+		{
+			return PostResult(till,GetLastSlope(from, till));
+
+		}
 		public Slope GetLastSlope(int from, int till)
 		{
 			int swing = _strategy.SwingIndicatorBars;
@@ -2829,26 +2840,28 @@ namespace NinjaTrader.Strategy
 					break;
 				}
 			}
-			//Now we find is it the most small or big local to do not look stupid
-//			while (result.Bar + 1 < till)
-//			{
-//				if (PositonType == MarketPosition.Long)
-//				{
-//					if (_strategy.High[result.Bar + 1] >= _strategy.High[result.Bar])
-//						result = new Slope(result.Bar + 1, _strategy.High[result.Bar + 1]);
-//					else
-//						break;
-//				}
-//				else
-//				{
-//					if (_strategy.Low[result.Bar + 1] <= _strategy.Low[result.Bar])
-//						result = new Slope(result.Bar + 1, _strategy.Low[result.Bar + 1]);
-//					else
-//						break;
-//				}
-//
-//			}
+			return result;
+		}
 
+		private Slope PostResult(int till, Slope result)
+		{
+			while (result.Bar + 1 < till)
+			{
+				if (PositonType == MarketPosition.Long)
+				{
+					if (_strategy.High[result.Bar + 1] >= _strategy.High[result.Bar])
+						result = new Slope(result.Bar + 1, _strategy.High[result.Bar + 1]);
+					else
+						break;
+				}
+				else
+				{
+					if (_strategy.Low[result.Bar + 1] <= _strategy.Low[result.Bar])
+						result = new Slope(result.Bar + 1, _strategy.Low[result.Bar + 1]);
+					else
+						break;
+				}
+			}
 			return result;
 		}
 
@@ -2905,28 +2918,18 @@ namespace NinjaTrader.Strategy
 			if (_isWaitSlope) //We wait for a slope
 			{
 				Slope tempSlope = GetLastSlope(0, _lastMinimumOrMaximum);
-				if (Math.Abs(tempSlope.Price) > 0.00001 && Math.Abs(tempSlope.Price - _lastSlope.Price) > 0.00001)
-				{
-					if (_firstSlope)
-					{
+				if(Math.Abs(tempSlope.Price) < 0.01)
+					return;
 
-						_firstSlope = false;
-						_currentSlope = tempSlope;
-						UpdateSlopeLine(_currentSlope);
-						_isWaitSlope = false;
-						_strategy.SendMail_dtsNewSlopeLineNew(_currentSlope.Price);
-					}
-
-					else if((PositonType == MarketPosition.Long && tempSlope.Price > _lastSlope.Price) || (PositonType == MarketPosition.Short && tempSlope.Price < _lastSlope.Price))
+					if ((PositonType == MarketPosition.Long && tempSlope.Price > _lastSlope.Price) || (PositonType == MarketPosition.Short && tempSlope.Price < _lastSlope.Price))
 					{
 						_currentSlope = tempSlope;
 						UpdateSlopeLine(_currentSlope);
 						_isWaitSlope = false;
 						_strategy.SendMail_dtsNewSlopeLineNew(_currentSlope.Price);
 					}
-					
+
 				}
-			}
 		}
 
 		public void UpdateEntry(double currentPrice)
