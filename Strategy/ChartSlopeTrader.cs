@@ -350,28 +350,15 @@ namespace NinjaTrader.Strategy
 				double priceLow = Low[1];
 				double priceHigh = High[1];
 
-				if (_currentRayContainer.PositionType == MarketPosition.Long)
-				{
-					if (priceLow <= entryLinePrice)
-						_isTouching = true;
-					else if (priceLow > entryLinePrice && _isTouching)
+				if (_currentRayContainer.PositionType == MarketPosition.Long&&priceLow > entryLinePrice)
 						EntryLineNumeriUpdate();
-				}
-				else if (_currentRayContainer.PositionType == MarketPosition.Short)
-				{
-					if (priceHigh>= entryLinePrice)
-					_isTouching = true;
-				else
-					if (priceHigh < entryLinePrice && _isTouching)
-				
+				else if (_currentRayContainer.PositionType == MarketPosition.Short&&priceHigh < entryLinePrice )
 						EntryLineNumeriUpdate();
-				}
 			}
 		}
 
 		private void EntryLineNumeriUpdate()
 		{
-			_isTouching = false;
 			EntryLineTouches--;
 			_numericUpDownBarEntry.Value = EntryLineTouches;
 			_numericUpDownBarEntry.Update();
@@ -767,7 +754,16 @@ namespace NinjaTrader.Strategy
 				}
 			}
 			else
+			{
 				MessageBox.Show("Some Problems with DTS pleas restart it or restart CST");
+				if (_currentRayContainer == null)
+				{
+					MessageBox.Show("Create the lines for DTS or reset if they already exist");
+					_checkBoxEnableTrailStop.Checked = false;
+				}
+				else
+					_currentDynamicTrailingStop = new DynamicTrailingStop(this, _currentRayContainer);
+			}
 		}
 
 		#endregion
@@ -1054,12 +1050,7 @@ namespace NinjaTrader.Strategy
 		{
 			if (_currentRayContainer != null && _currentRayContainer.IsAlternativeLine)
 				_currentRayContainer.RemoveAlternativeRay();
-			if (_currentDynamicTrailingStop != null)
-			{
-				_currentDynamicTrailingStop.Clear();
-				_currentDynamicTrailingStop = null;
-			}
-			_checkBoxEnableBarEntry.Enabled = true;
+			_checkBoxEnableTrailStop.Checked = false;
 
 			_buttonActivate.Text = "ACTIVATE";
 			_buttonActivate.BackColor = _activateColor;
@@ -1758,7 +1749,7 @@ namespace NinjaTrader.Strategy
 			_numericUpDownQuantity.Size = new Size(79, 20);
 			_numericUpDownQuantity.TabIndex = 0;
 			_numericUpDownQuantity.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownQuantity.Value = new decimal(new[] { 10000, 0, 0, 0 });
+			_numericUpDownQuantity.Value = new decimal(new[] { 10, 0, 0, 0 });
 			// 
 			// button_ClosePosition
 			// 
@@ -2252,12 +2243,12 @@ namespace NinjaTrader.Strategy
 		private double _profitLoss;
 		private double _profitPercent;
 
-		private string _mailAddress = "daniel@danielwardzynski.com";
-		private string _eMailLogin = "chartslopetrader";
-		private string _eMailPassword = "123qwe456rty";
-//		private string _mailAddress = "comman.games@outlook.com";
-//		private string _eMailLogin = "alfaa.gen";
-//		private string _eMailPassword = "Train@concentration";
+//		private string _mailAddress = "daniel@danielwardzynski.com";
+//		private string _eMailLogin = "chartslopetrader";
+//		private string _eMailPassword = "123qwe456rty";
+		private string _mailAddress = "comman.games@outlook.com";
+		private string _eMailLogin = "alfaa.gen";
+		private string _eMailPassword = "Train@concentration";
 		private bool _doNoRemoveAltLine;
 		private int EntryLineTouches=0;
 		private double _ohterProfitLoss;
@@ -2364,6 +2355,7 @@ namespace NinjaTrader.Strategy
 			catch (Exception ex)
 			{
 				MessageBox.Show("We can't send e-mail");
+				Thread.CurrentThread.Abort();
 			}
 		}
 
