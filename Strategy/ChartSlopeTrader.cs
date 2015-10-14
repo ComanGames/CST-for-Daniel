@@ -2602,9 +2602,7 @@ namespace NinjaTrader.Strategy
 			}
 			ClosingHalf = true;
 			//Distance we will count from profit Ray
-			double distance = (_tpDot.Y - _strategy._currentPrice) / 2;
-			if (!exit)
-				distance = (_tpDot.Y - _eDot.Y) / 2;
+			double distance = (_tpDot.Y - _eDot.Y) / 2;
 			//Drawing the ray
 			HalfCloseRay = _strategy.DrawRay("HalfClose", false,
 				(ProfitTargetRay.Anchor1BarsAgo),
