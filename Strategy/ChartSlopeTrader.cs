@@ -1663,7 +1663,7 @@ namespace NinjaTrader.Strategy
 			// 
 			_rrLabel.BackColor = Color.White;
 			_rrLabel.BorderStyle = BorderStyle.FixedSingle;
-			_rrLabel.Location = new Point(10, 106);
+			_rrLabel.Location = new Point(10, 107);
 			_rrLabel.Margin = new Padding(2, 0, 2, 0);
 			_rrLabel.Name = "RRLabel";
 			_rrLabel.Size = new Size(34, 22);
@@ -1675,7 +1675,7 @@ namespace NinjaTrader.Strategy
 			// 
 			_rr50Label.BackColor = Color.White;
 			_rr50Label.BorderStyle = BorderStyle.FixedSingle;
-			_rr50Label.Location = new Point(87, 106);
+			_rr50Label.Location = new Point(87, 107);
 			_rr50Label.Margin = new Padding(2, 0, 2, 0);
 			_rr50Label.Name = "RR50Label";
 			_rr50Label.Size = new Size(34, 22);
@@ -1731,7 +1731,7 @@ namespace NinjaTrader.Strategy
 			// checkBox_EnablePartialProfit
 			// 
 			_checkBoxEnablePartialProfit.AutoSize = true;
-			_checkBoxEnablePartialProfit.Location = new Point(8, 50);
+			_checkBoxEnablePartialProfit.Location = new Point(8, 48);
 			_checkBoxEnablePartialProfit.Margin = new Padding(2);
 			_checkBoxEnablePartialProfit.Name = "checkBox_EnablePartialProfit";
 			_checkBoxEnablePartialProfit.Size = new Size(59, 17);
@@ -1855,7 +1855,7 @@ namespace NinjaTrader.Strategy
 			//
 			// 
 			_groupBoxMail.Controls.Add(_checkBoxEnableShortLongAlert);
-			_groupBoxMail.Location = new Point(6, 780);
+			_groupBoxMail.Location = new Point(6, 770);
 			_groupBoxMail.Margin = new Padding(2);
 			_groupBoxMail.Name = "groupBox0";
 			_groupBoxMail.Padding = new Padding(2);
@@ -1905,7 +1905,7 @@ namespace NinjaTrader.Strategy
 			_checkBoxEnableShortLongAlert.Location = new Point(10, 20);
 			_checkBoxEnableShortLongAlert.Margin = new Padding(2);
 			_checkBoxEnableShortLongAlert.Name = "checkBox_EnableMailEntry";
-			_checkBoxEnableShortLongAlert.Size = new Size(150, 17);
+			_checkBoxEnableShortLongAlert.Size = new Size(140, 17);
 			_checkBoxEnableShortLongAlert.TabIndex = 5;
 			_checkBoxEnableShortLongAlert.Text = "Enable LONG/SHORT";
 			_checkBoxEnableShortLongAlert.UseVisualStyleBackColor = true;
@@ -1918,9 +1918,9 @@ namespace NinjaTrader.Strategy
 			_checkBoxEnablePartialProfitAlert.Location = new Point(10, 40);
 			_checkBoxEnablePartialProfitAlert.Margin = new Padding(2);
 			_checkBoxEnablePartialProfitAlert.Name = "checkBox_EnablePartialProfitAlert";
-			_checkBoxEnablePartialProfitAlert.Size = new Size(150, 17);
+			_checkBoxEnablePartialProfitAlert.Size = new Size(140, 17);
 			_checkBoxEnablePartialProfitAlert.TabIndex = 5;
-			_checkBoxEnablePartialProfitAlert.Text = "Enable 50% Partial Profit";
+			_checkBoxEnablePartialProfitAlert.Text = "Enable Partial Profit";
 			_checkBoxEnablePartialProfitAlert.UseVisualStyleBackColor = true;
 			_checkBoxEnablePartialProfitAlert.CheckedChanged += _checkBoxEnablePartialProfitAlert_CheckedChanged;
 			// 
@@ -1931,7 +1931,7 @@ namespace NinjaTrader.Strategy
 			_checkBoxEnableTrailStopAlert.Location = new Point(10, 60);
 			_checkBoxEnableTrailStopAlert.Margin = new Padding(2);
 			_checkBoxEnableTrailStopAlert.Name = "checkBox_EnableTrailStopAlert";
-			_checkBoxEnableTrailStopAlert.Size = new Size(150, 17);
+			_checkBoxEnableTrailStopAlert.Size = new Size(140, 17);
 			_checkBoxEnableTrailStopAlert.TabIndex = 5;
 			_checkBoxEnableTrailStopAlert.Text = "Enable DTS";
 			_checkBoxEnableTrailStopAlert.UseVisualStyleBackColor = true;
@@ -1947,7 +1947,7 @@ namespace NinjaTrader.Strategy
 			_groupBoxTrailStop.Controls.Add(_numericUpDownStopLevelTicks);
 			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStop);
 			_groupBoxTrailStop.Controls.Add(_numericUpDownHorizontalTicks);
-			_groupBoxTrailStop.Location = new Point(6, 597);
+			_groupBoxTrailStop.Location = new Point(6, 599);
 			_groupBoxTrailStop.Margin = new Padding(2);
 			_groupBoxTrailStop.Name = "groupBox_TrailStop";
 			_groupBoxTrailStop.Padding = new Padding(2);
