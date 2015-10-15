@@ -16,6 +16,8 @@ using NinjaTrader.Gui.Chart;
 using Instrument = NinjaTrader.Cbi.Instrument;
 using System.IO;
 using System.Threading;
+using ExternalWinowForDTS;
+
 #endregion
 
 // ReSharper disable once CheckNamespace
@@ -214,6 +216,7 @@ namespace NinjaTrader.Strategy
 
 		private void SendExitMails()
 		{
+	
 			if (!_deActivate)
 			{					
 					//Rays prices
@@ -1518,6 +1521,7 @@ namespace NinjaTrader.Strategy
 			_buttonMakeHorizontalLine = new Button();
 			_buttonClearSelection = new Button();
 			_buttonActivate = new Button();
+			_buttonInfo = new Button();
 			_groupBoxStatusWindow.SuspendLayout();
 			_groupBoxPartialProfit.SuspendLayout();
 			_groupBoxQuantity.SuspendLayout();
@@ -1567,7 +1571,22 @@ namespace NinjaTrader.Strategy
 			_buttonActivate.TabIndex = 9;
 			_buttonActivate.Text = "ACTIVATE";
 			_buttonActivate.UseVisualStyleBackColor = false;
-			_buttonActivate.Click += _buttonActivateClick;
+			_buttonActivate.Click += _buttonActivateClick;			
+			// 
+			// _buttonUpdate
+			// 
+			_groupBoxMail.Controls.Add(_buttonInfo);
+			_buttonInfo.BackColor = _activateColor;
+			_buttonInfo.Font = new Font("Microsoft Sans Serif", 8.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
+			_buttonInfo.ForeColor = SystemColors.Window;
+			_buttonInfo.Location = new Point(4, 69);
+			_buttonInfo.Margin = new Padding(2);
+			_buttonInfo.Name = "_buttonInfo";
+			_buttonInfo.Size = new Size(144, 26);
+			_buttonInfo.TabIndex = 9;
+			_buttonInfo.Text = "INFO Window";
+			_buttonInfo.UseVisualStyleBackColor = false;
+			_buttonInfo.Click += _buttonInfoClick; 
 
 			#endregion
 
@@ -2260,6 +2279,11 @@ namespace NinjaTrader.Strategy
 			ChartControl.Controls.Add(_mainPanel);
 		}
 
+		private void _buttonInfoClick(object sender, EventArgs eventArgs)
+		{
+			Application.Run(new AccountInfo());
+		}
+
 		private void _checkBoxEnableBarEntry_CheckedChanged(object sender, EventArgs e)
 		{
 			if (_checkBoxEnableBarEntry.Checked)
@@ -2286,6 +2310,7 @@ namespace NinjaTrader.Strategy
 		}
 
 		private Button _buttonActivate;
+		private Button _buttonInfo;
 		private readonly Color _deactivateColor = Color.OrangeRed;
 		private DynamicTrailingStop _currentDynamicTrailingStop;
 		private int _millisecondsTimeout = 15000;
