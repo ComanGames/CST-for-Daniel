@@ -2283,15 +2283,7 @@ namespace NinjaTrader.Strategy
 
 		private void _buttonInfoClick(object sender, EventArgs eventArgs)
 		{
-			try
-			{
-				_windowAccountInfo = new AccountInfo(this);
-				_windowAccountInfo.Show();
-			}
-			catch (Exception e)
-			{
-				MessageBox.Show(e.Message+e.StackTrace);
-			}
+			MessageBox.Show("Want working build pay Yura ");
 		}
 
 
