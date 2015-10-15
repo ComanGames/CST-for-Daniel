@@ -16,7 +16,6 @@ using NinjaTrader.Gui.Chart;
 using Instrument = NinjaTrader.Cbi.Instrument;
 using System.IO;
 using System.Threading;
-using ExternalWinowForDTS;
 
 #endregion
 
@@ -1579,7 +1578,7 @@ namespace NinjaTrader.Strategy
 			_buttonInfo.BackColor = _activateColor;
 			_buttonInfo.Font = new Font("Microsoft Sans Serif", 8.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
 			_buttonInfo.ForeColor = SystemColors.Window;
-			_buttonInfo.Location = new Point(4, 69);
+			_buttonInfo.Location = new Point(4, 80);
 			_buttonInfo.Margin = new Padding(2);
 			_buttonInfo.Name = "_buttonInfo";
 			_buttonInfo.Size = new Size(144, 26);
@@ -2279,15 +2278,33 @@ namespace NinjaTrader.Strategy
 			ChartControl.Controls.Add(_mainPanel);
 		}
 
+
+		private AccountInfo _windowAccountInfo;
+
 		private void _buttonInfoClick(object sender, EventArgs eventArgs)
 		{
-			Application.Run(new AccountInfo());
+			try
+			{
+				_windowAccountInfo = new AccountInfo(this);
+				_windowAccountInfo.Show();
+			}
+			catch (Exception e)
+			{
+				MessageBox.Show(e.Message+e.StackTrace);
+			}
 		}
+
 
 		private void _checkBoxEnableBarEntry_CheckedChanged(object sender, EventArgs e)
 		{
 			if (_checkBoxEnableBarEntry.Checked)
 			{
+				if (_strategyState == StrategyState.NotActive || _numericUpDownBarEntry.Value == 0)
+				{
+					MessageBox.Show("You are got Bar to Entry Zero or You are not active yet");
+					return;
+					
+				}
 				if (_strategyState == StrategyState.Enter)
 				{
 					CancelAllOrders(true, false);
@@ -2497,10 +2514,10 @@ namespace NinjaTrader.Strategy
 
 
 
-		private Bitmap GetChartPicture()
+		 public Bitmap GetChartPicture()
 		{
 			Bitmap bmp;
-			 bmp = new Bitmap(ChartControl.ChartPanel.Width, ChartControl.ChartPanel.Height, PixelFormat.Format16bppRgb555);
+			bmp = GetChartPictureFast();
 			int counter = 0;
 			do
 			{
@@ -2513,6 +2530,15 @@ namespace NinjaTrader.Strategy
 
 			return bmp;
 		}
+
+		public Bitmap GetChartPictureFast()
+		{
+			Bitmap bmp;
+			bmp = new Bitmap(ChartControl.ChartPanel.Width, ChartControl.ChartPanel.Height, PixelFormat.Format16bppRgb555);
+				ChartControl.ChartPanel.DrawToBitmap(bmp, ChartControl.ChartPanel.ClientRectangle);
+			return bmp;
+		}
+
 		private Bitmap GetCSTPanelPicture()
 		{
 			Bitmap bmp = new Bitmap(_mainPanel.Width, _mainPanel.Height, PixelFormat.Format16bppRgb555);
@@ -2803,6 +2829,8 @@ namespace NinjaTrader.Strategy
 
 		private void SetStopRay(double price)
 		{
+			if (Math.Abs(price) < 0.1)
+				return;
 			_rayContainer.StopRay.Anchor1Y = price;
 			_rayContainer.StopRay.Anchor2Y = price;
 			_rayContainer.StopRay.Anchor1BarsAgo = _currentSlope.Bar;
