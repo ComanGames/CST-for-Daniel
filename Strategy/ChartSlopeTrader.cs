@@ -53,11 +53,78 @@ namespace NinjaTrader.Strategy
 		private IOrder _currentOrder;
 
 		private StrategyState _strategyState = StrategyState.NotActive;
+		private DynamicTrailingStop _currentDynamicTrailingStop;
+		private int _millisecondsTimeout = 15000;
+		private double _profitLoss;
+		private double _profitPercent;
+
+		private bool _doNoRemoveAltLine;
+		private int EntryLineTouches = 0;
+		private double _ohterProfitLoss;
+		private double _otherProfitPercent;
+		private bool _wasPrtialProfit;
+		private bool _canUseOtherInstrument;
+		private bool _firstOrderSet;
+		private bool _deActivate;
 
 		#endregion
 
+		#region Mail Settings
+
+		private string _mailAddress = "daniel@danielwardzynski.com";
+		private string _eMailLogin = "chartslopetrader";
+		private string _eMailPassword = "123qwe456rty";
+		//		private string _mailAddress = "comman.games@outlook.com";
+		//		private string _eMailLogin = "alfaa.gen";
+		//		private string _eMailPassword = "Train@concentration";
+
+		#endregion
+
+		#region AuroProportys
+
+		public double ProportionalDistance { get; set; }
+
+		private string SendingText { get; set; }
+
+		private string SendingTopic { get; set; }
+
+		public double _currentPrice { get; set; }
+		#endregion
+
+		#region proportys
+
+		public int SwingIndicatorBars
+		{
+			get
+			{
+				if (_numericUpDownSwingIndicatorBars != null) return (int) _numericUpDownSwingIndicatorBars.Value;
+				return 1;
+			}
+		}
+
+		public double StopLevel
+		{
+			get
+			{
+				if (_numericUpDownStopLevelTicks != null) return (double) _numericUpDownStopLevelTicks.Value*TickSize;
+				return 0;
+			}
+		}
+
+		public double SwingHorizontal
+		{
+			get
+			{
+				if (_numericUpDownHorizontalTicks != null) return (double) _numericUpDownHorizontalTicks.Value*TickSize;
+				return 0;
+			}
+		}
+
+
+		#endregion
+
+		private string _otherInstrumentName = "$EURUSD";
 		#region Initialization & Uninitialization
-		private bool _canUseOtherInstrument;
 
 		protected override void Initialize()
 		{
@@ -313,7 +380,6 @@ namespace NinjaTrader.Strategy
 		}
 
 
-		public double _currentPrice { get; set; }
 		protected override void OnBarUpdate()
 		{
 			try
@@ -858,46 +924,6 @@ namespace NinjaTrader.Strategy
 			MessageBox.Show("Please select line First");
 		}
 
-
-		private void _buttonLongClick(object sender, EventArgs e)
-		{
-			IRay ray;
-			//Check are we able to use ray
-			if (!CanUseRay(out ray))
-				return;
-
-			//We crating the container for the rays
-			// ReSharper disable once UseNullPropagation
-			if (_currentRayContainer != null)
-				_currentRayContainer.Clear();
-			_currentRayContainer = new RayContainer(MarketPosition.Long, ray, this, _checkBoxEnablePartialProfit.Checked,
-				_checkBoxEnableTrailStop.Checked);
-			_currentRayContainer.Update();
-			UpdateForms();
-		}
-
-		private void _buttonShortClick(object sender, EventArgs e)
-		{
-			IRay ray;
-			//Check are we able to use ray
-			if (!CanUseRay(out ray))
-				return;
-			//We are creating container for a rays
-			// ReSharper disable once UseNullPropagation
-			if (_currentRayContainer != null)
-				_currentRayContainer.Clear();
-			_currentRayContainer = new RayContainer(MarketPosition.Short, ray, this, _checkBoxEnablePartialProfit.Checked,
-				_checkBoxEnableTrailStop.Checked);
-			_currentRayContainer.Update();
-			UpdateForms();
-
-		}
-
-		/// <summary>
-		/// The  method that checks can we use the Ray or not
-		/// </summary>
-		/// <param name="ray"></param>
-		/// <returns></returns>
 		private bool CanUseRay(out IRay ray)
 		{
 			if (!GetSelectedRay(out ray))
@@ -952,10 +978,6 @@ namespace NinjaTrader.Strategy
 				rayToUse.EndY = averagePrice;
 			}
 		}
-
-		private bool _firstOrderSet;
-
-		private bool _deActivate;
 
 		private void _buttonActivateClick(object sender, EventArgs e)
 		{
@@ -1345,938 +1367,6 @@ namespace NinjaTrader.Strategy
 			_currentRayContainer.Update();
 		}
 
-		public int SwingIndicatorBars
-		{
-			get
-			{
-				if (_numericUpDownSwingIndicatorBars != null) return (int)_numericUpDownSwingIndicatorBars.Value;
-				return 1;
-			}
-		}
-
-		public double StopLevel
-		{
-			get
-			{
-				if (_numericUpDownStopLevelTicks != null) return (double)_numericUpDownStopLevelTicks.Value * TickSize;
-				return 0;
-			}
-		}
-
-		public double SwingHorizontal
-		{
-			get
-			{
-				if (_numericUpDownHorizontalTicks != null) return (double)_numericUpDownHorizontalTicks.Value * TickSize;
-				return 0;
-			}
-		}
-
-		private string _otherInstrumentName = "$EURUSD";
-
-		[Description("The other currency that we will use for trading")]
-		[GridCategory("Parameters")]
-		[Gui.Design.DisplayName("Second currency")]
-		public string OtherInstrumentName
-		{
-			get { return _otherInstrumentName; }
-			set { _otherInstrumentName = value; }
-		}
-
-
-		[Description("The Email Address to what we will be sending the lists")]
-		[GridCategory("Parameters")]
-		[Gui.Design.DisplayName("E-Mail")]
-		public string E_MailAddress
-		{
-			get { return _mailAddress; }
-			set { _mailAddress = value; }
-		}
-
-		[Description("The Email login to GMAIL!")]
-		[GridCategory("Parameters")]
-		[Gui.Design.DisplayName(" From E-Mail Login")]
-		public string E_MailLogin
-		{
-			get { return _eMailLogin; }
-			set { _eMailLogin = value; }
-		}
-
-		[Description("The Email password to GMAIL!")]
-		[GridCategory("Parameters")]
-		[Gui.Design.DisplayName("From E-Mail Password")]
-		public string E_MailPassword
-		{
-			get { return _eMailPassword; }
-			set { _eMailPassword = value; }
-		}
-
-		#region VS2010 Controls Paste
-
-		private Panel _mainPanel;
-		private GroupBox _groupBoxStatusWindow;
-		private GroupBox _groupBoxQuantity;
-		private NumericUpDown _numericUpDownQuantity;
-		private Button _buttonClosePosition;
-		private Button _buttonManualShort;
-		private Button _buttonManualLong;
-		private Button _buttonUpdateQuantity;
-		private GroupBox _groupBoxPartialProfit;
-		private CheckBox _checkBoxEnablePartialProfit;
-		private Button _buttonCloseHalfPosition;
-		private Label _statusLabel;
-		private Label _rr50Label;
-		private GroupBox _groupBoxMode;
-		private CheckBox _checkBoxEnablePartialProfitAlert;
-		private Button _buttonMakeHorizontalLine;
-		private GroupBox _groupBoxTrailStop;
-		private CheckBox _checkBoxEnableTrailStopAlert;
-		private CheckBox _checkBoxEnableTrailStop;
-		private NumericUpDown _numericUpDownSwingIndicatorBars;
-		private NumericUpDown _numericUpDownStopLevelTicks;
-		private NumericUpDown _numericUpDownHorizontalTicks;
-		private Label _rr50NameLabel;
-		private Label _partialMsgLabel;
-		private Label _dynamicTrailingStopMsgLabel;
-		private GroupBox _groupBoxStopToEntry;
-		private Label _labelPipsToActivateText;
-		private Label _labelPipsToActivateTextDistance;
-		private NumericUpDown _numericUpDownPipTicksToActivate;
-		private NumericUpDown _numericUpDownPipTicksToActivateDistance;
-		private Button _buttonManualMoveStop;
-		private GroupBox _groupBox1;
-		private GroupBox _groupBoxMail;
-		private Label _label4;
-		private NumericUpDown _numericUpDownBarEntry;
-		private CheckBox _checkBoxEnableBarEntry;
-		private CheckBox _checkBoxEnableShortLongAlert;
-		private Label _stopToEnterMsgLabel;
-		private Label _rrLabel;
-		private Label _rrNamelabel;
-		private Label _label7;
-		private Label _label9;
-		private Label _label8;
-		private Button _buttonClearSelection;
-
-		private RadioButton _radioButtonNone;
-		private RadioButton _radioButtonEntryLine;
-		private RadioButton _radioButtonPartialProfit;
-
-
-		private CheckBox _checkBoxOtherCurrency;
-		private Label _textBoxOtherCurrency;
-
-		private void VS2010_InitializeComponent_Form()
-		{
-			#region Creating FormVariables 
-
-			_groupBoxStatusWindow = new GroupBox();
-			_rrLabel = new Label();
-			_rr50NameLabel = new Label();
-			_rrNamelabel = new Label();
-			_stopToEnterMsgLabel = new Label();
-			_dynamicTrailingStopMsgLabel = new Label();
-			_rr50Label = new Label();
-			_statusLabel = new Label();
-			_partialMsgLabel = new Label();
-			_groupBoxPartialProfit = new GroupBox();
-			_checkBoxEnablePartialProfitAlert = new CheckBox();
-			_checkBoxOtherCurrency = new CheckBox();
-			_textBoxOtherCurrency = new Label();
-			_buttonCloseHalfPosition = new Button();
-			_checkBoxEnablePartialProfit = new CheckBox();
-			_groupBoxQuantity = new GroupBox();
-			_buttonUpdateQuantity = new Button();
-			_numericUpDownQuantity = new NumericUpDown();
-			_buttonClosePosition = new Button();
-			_buttonManualShort = new Button();
-			_buttonManualLong = new Button();
-			_mainPanel = new Panel();
-			_groupBox1 = new GroupBox();
-			_groupBoxMail = new GroupBox();
-			_label4 = new Label();
-			_numericUpDownBarEntry = new NumericUpDown();
-			_checkBoxEnableBarEntry = new CheckBox();
-			_checkBoxEnableShortLongAlert = new CheckBox();
-			_groupBoxTrailStop = new GroupBox();
-			_label9 = new Label();
-			_label8 = new Label();
-			_label7 = new Label();
-			_numericUpDownSwingIndicatorBars = new NumericUpDown();
-			_numericUpDownStopLevelTicks = new NumericUpDown();
-			_checkBoxEnableTrailStopAlert = new CheckBox();
-			_checkBoxEnableTrailStop = new CheckBox();
-			_numericUpDownHorizontalTicks = new NumericUpDown();
-			_groupBoxStopToEntry = new GroupBox();
-			_labelPipsToActivateText = new Label();
-			_labelPipsToActivateTextDistance = new Label();
-			_numericUpDownPipTicksToActivate = new NumericUpDown();
-			_numericUpDownPipTicksToActivateDistance = new NumericUpDown();
-			_buttonManualMoveStop = new Button();
-			_groupBoxMode = new GroupBox();
-			_buttonMakeHorizontalLine = new Button();
-			_buttonClearSelection = new Button();
-			_buttonActivate = new Button();
-			_buttonInfo = new Button();
-			_groupBoxStatusWindow.SuspendLayout();
-			_groupBoxPartialProfit.SuspendLayout();
-			_groupBoxQuantity.SuspendLayout();
-			((ISupportInitialize)(_numericUpDownQuantity)).BeginInit();
-			_mainPanel.SuspendLayout();
-			_groupBox1.SuspendLayout();
-			_groupBoxMail.SuspendLayout();
-			((ISupportInitialize)(_numericUpDownBarEntry)).BeginInit();
-			_groupBoxTrailStop.SuspendLayout();
-			((ISupportInitialize)(_numericUpDownSwingIndicatorBars)).BeginInit();
-			((ISupportInitialize)(_numericUpDownStopLevelTicks)).BeginInit();
-			((ISupportInitialize)(_numericUpDownHorizontalTicks)).BeginInit();
-			_groupBoxStopToEntry.SuspendLayout();
-			((ISupportInitialize)(_numericUpDownPipTicksToActivate)).BeginInit();
-			_groupBoxMode.SuspendLayout();
-
-			#endregion
-
-			#region Buttons
-
-			// 
-			// _buttonClearSelection
-			// 
-			_buttonClearSelection.BackColor = _disabledColor;
-			_buttonClearSelection.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-			_buttonClearSelection.ForeColor = Color.White;
-			_buttonClearSelection.Location = new Point(4, 97);
-			_buttonClearSelection.Margin = new Padding(2);
-			_buttonClearSelection.Name = "_buttonClearSelection";
-			_buttonClearSelection.Size = new Size(144, 27);
-			_buttonClearSelection.TabIndex = 8;
-			_buttonClearSelection.Text = "CLEAR SELECTION";
-			_buttonClearSelection.UseVisualStyleBackColor = false;
-			_buttonClearSelection.Click += _buttonClearSelection_Click;
-
-			// 
-			// _buttonActivate
-			// 
-
-			_buttonActivate.BackColor = _activateColor;
-			_buttonActivate.Font = new Font("Microsoft Sans Serif", 8.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			_buttonActivate.ForeColor = SystemColors.Window;
-			_buttonActivate.Location = new Point(4, 69);
-			_buttonActivate.Margin = new Padding(2);
-			_buttonActivate.Name = "_buttonActivate";
-			_buttonActivate.Size = new Size(144, 26);
-			_buttonActivate.TabIndex = 9;
-			_buttonActivate.Text = "ACTIVATE";
-			_buttonActivate.UseVisualStyleBackColor = false;
-			_buttonActivate.Click += _buttonActivateClick;
-			// 
-			// _buttonUpdate
-			// 
-			_groupBoxMail.Controls.Add(_buttonInfo);
-			_buttonInfo.BackColor = _activateColor;
-			_buttonInfo.Font = new Font("Microsoft Sans Serif", 8.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			_buttonInfo.ForeColor = SystemColors.Window;
-			_buttonInfo.Location = new Point(4, 80);
-			_buttonInfo.Margin = new Padding(2);
-			_buttonInfo.Name = "_buttonInfo";
-			_buttonInfo.Size = new Size(144, 26);
-			_buttonInfo.TabIndex = 9;
-			_buttonInfo.Text = "INFO Window";
-			_buttonInfo.UseVisualStyleBackColor = false;
-			_buttonInfo.Click += _buttonInfoClick;
-
-			#endregion
-
-			// 
-			// groupBox_StatusWindow
-			// 
-			_groupBoxStatusWindow.BackColor = SystemColors.Control;
-			//RR
-			_groupBoxStatusWindow.Controls.Add(_rrLabel);
-			_groupBoxStatusWindow.Controls.Add(_rr50NameLabel);
-			_groupBoxStatusWindow.Controls.Add(_rrNamelabel);
-			_groupBoxStatusWindow.Controls.Add(_rr50Label);
-			//
-			_groupBoxStatusWindow.Controls.Add(_statusLabel);
-			_groupBoxStatusWindow.Controls.Add(_partialMsgLabel);
-			_groupBoxStatusWindow.Controls.Add(_stopToEnterMsgLabel);
-			_groupBoxStatusWindow.Controls.Add(_dynamicTrailingStopMsgLabel);
-			_groupBoxStatusWindow.Location = new Point(6, 3);
-			_groupBoxStatusWindow.Margin = new Padding(2);
-			_groupBoxStatusWindow.Name = "groupBox_StatusWindow";
-			_groupBoxStatusWindow.Padding = new Padding(2);
-			_groupBoxStatusWindow.Size = new Size(154, 132);
-			_groupBoxStatusWindow.TabIndex = 0;
-			_groupBoxStatusWindow.TabStop = false;
-			_groupBoxStatusWindow.Text = "Status Window";
-			// 
-			// StopToEMsgLabel
-			// 
-			_stopToEnterMsgLabel.BackColor = _disabledColor;
-			_stopToEnterMsgLabel.BorderStyle = BorderStyle.FixedSingle;
-			_stopToEnterMsgLabel.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-			_stopToEnterMsgLabel.ForeColor = SystemColors.Window;
-			_stopToEnterMsgLabel.Location = new Point(78, 68);
-			_stopToEnterMsgLabel.Margin = new Padding(2, 0, 2, 0);
-			_stopToEnterMsgLabel.Name = "StopToEntyMsgLabel";
-			_stopToEnterMsgLabel.Size = new Size(70, 22);
-			_stopToEnterMsgLabel.TabIndex = 3;
-			_stopToEnterMsgLabel.Text = "StE NOT";
-			_stopToEnterMsgLabel.TextAlign = ContentAlignment.MiddleCenter;
-			// 
-			// DynamicTrailingStopMsgLabel
-			// 
-			_dynamicTrailingStopMsgLabel.BackColor = _disabledColor;
-			_dynamicTrailingStopMsgLabel.BorderStyle = BorderStyle.FixedSingle;
-			_dynamicTrailingStopMsgLabel.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-			_dynamicTrailingStopMsgLabel.ForeColor = SystemColors.Window;
-			_dynamicTrailingStopMsgLabel.Location = new Point(6, 68);
-			_dynamicTrailingStopMsgLabel.Margin = new Padding(2, 0, 2, 0);
-			_dynamicTrailingStopMsgLabel.Name = "DynamicTrailingStopMsgLabel";
-			_dynamicTrailingStopMsgLabel.Size = new Size(68, 22);
-			_dynamicTrailingStopMsgLabel.TabIndex = 3;
-			_dynamicTrailingStopMsgLabel.Text = "DTS NOT";
-			_dynamicTrailingStopMsgLabel.TextAlign = ContentAlignment.MiddleCenter;
-			// 
-			// PartialMsgLabel
-			// 
-			_partialMsgLabel.BackColor = _disabledColor;
-			_partialMsgLabel.BorderStyle = BorderStyle.FixedSingle;
-			_partialMsgLabel.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-			_partialMsgLabel.ForeColor = SystemColors.Window;
-			_partialMsgLabel.Location = new Point(6, 43);
-			_partialMsgLabel.Margin = new Padding(2, 0, 2, 0);
-			_partialMsgLabel.Name = "PartialMsgLabel";
-			_partialMsgLabel.Size = new Size(142, 22);
-			_partialMsgLabel.TabIndex = 2;
-			_partialMsgLabel.Text = "50% TP Disabled";
-			_partialMsgLabel.TextAlign = ContentAlignment.MiddleCenter;
-
-			#region RR
-
-			// 
-			// RR50NameLabel
-			// 
-			_rr50NameLabel.AutoSize = true;
-			_rr50NameLabel.Location = new Point(84, 90);
-			_rr50NameLabel.Margin = new Padding(2, 0, 2, 0);
-			_rr50NameLabel.Name = "RR50NameLabel";
-			_rr50NameLabel.Size = new Size(55, 13);
-			_rr50NameLabel.TabIndex = 2;
-			_rr50NameLabel.Text = "R:R - 50%";
-			// 
-			// RRNamelabel
-			// 
-			_rrNamelabel.AutoSize = true;
-			_rrNamelabel.Location = new Point(7, 90);
-			_rrNamelabel.Margin = new Padding(2, 0, 2, 0);
-			_rrNamelabel.Name = "RRNamelabel";
-			_rrNamelabel.Size = new Size(26, 13);
-			_rrNamelabel.TabIndex = 4;
-			_rrNamelabel.Text = "R:R";
-			// 
-			// RRLabel
-			// 
-			_rrLabel.BackColor = Color.White;
-			_rrLabel.BorderStyle = BorderStyle.FixedSingle;
-			_rrLabel.Location = new Point(10, 107);
-			_rrLabel.Margin = new Padding(2, 0, 2, 0);
-			_rrLabel.Name = "RRLabel";
-			_rrLabel.Size = new Size(34, 22);
-			_rrLabel.TabIndex = 5;
-			_rrLabel.Text = "3.46";
-			_rrLabel.TextAlign = ContentAlignment.MiddleCenter;
-			// 
-			// RR50Label
-			// 
-			_rr50Label.BackColor = Color.White;
-			_rr50Label.BorderStyle = BorderStyle.FixedSingle;
-			_rr50Label.Location = new Point(87, 107);
-			_rr50Label.Margin = new Padding(2, 0, 2, 0);
-			_rr50Label.Name = "RR50Label";
-			_rr50Label.Size = new Size(34, 22);
-			_rr50Label.TabIndex = 3;
-			_rr50Label.Text = "3.46";
-			_rr50Label.TextAlign = ContentAlignment.MiddleCenter;
-			// 
-			// StatusLabel
-			// 
-			_statusLabel.BackColor = _disabledColor;
-			_statusLabel.BorderStyle = BorderStyle.FixedSingle;
-			_statusLabel.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-			_statusLabel.ForeColor = Color.White;
-			_statusLabel.Location = new Point(6, 18);
-			_statusLabel.Margin = new Padding(2, 0, 2, 0);
-			_statusLabel.Name = "StatusLabel";
-			_statusLabel.Size = new Size(142, 22);
-			_statusLabel.TabIndex = 0;
-			_statusLabel.Text = "Not Active";
-			_statusLabel.TextAlign = ContentAlignment.MiddleCenter;
-
-			#endregion
-
-			// 
-			// groupBox_PartialProfit
-			// 
-			_groupBoxPartialProfit.BackColor = SystemColors.ControlLight;
-			_groupBoxPartialProfit.Controls.Add(_buttonCloseHalfPosition);
-			_groupBoxPartialProfit.Controls.Add(_checkBoxEnablePartialProfit);
-			_groupBoxPartialProfit.Location = new Point(6, 374);
-			_groupBoxPartialProfit.Margin = new Padding(2);
-			_groupBoxPartialProfit.Name = "groupBox_PartialProfit";
-			_groupBoxPartialProfit.Padding = new Padding(2);
-			_groupBoxPartialProfit.Size = new Size(154, 69);
-			_groupBoxPartialProfit.TabIndex = 5;
-			_groupBoxPartialProfit.TabStop = false;
-			_groupBoxPartialProfit.Text = "50 % Partial Take Profit";
-			// 
-			// button_CloseHalfPosition
-			// 
-			_buttonCloseHalfPosition.BackColor = _disabledColor;
-			_buttonCloseHalfPosition.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-			_buttonCloseHalfPosition.ForeColor = Color.White;
-			_buttonCloseHalfPosition.Location = new Point(6, 19);
-			_buttonCloseHalfPosition.Margin = new Padding(2);
-			_buttonCloseHalfPosition.Name = "button_CloseHalfPosition";
-			_buttonCloseHalfPosition.Size = new Size(144, 27);
-			_buttonCloseHalfPosition.TabIndex = 2;
-			_buttonCloseHalfPosition.Text = "MANUAL CLOSE 50%";
-			_buttonCloseHalfPosition.UseVisualStyleBackColor = false;
-			_buttonCloseHalfPosition.Click += _buttonCloseHalfPositionClick;
-			// 
-			// checkBox_EnablePartialProfit
-			// 
-			_checkBoxEnablePartialProfit.AutoSize = true;
-			_checkBoxEnablePartialProfit.Location = new Point(8, 48);
-			_checkBoxEnablePartialProfit.Margin = new Padding(2);
-			_checkBoxEnablePartialProfit.Name = "checkBox_EnablePartialProfit";
-			_checkBoxEnablePartialProfit.Size = new Size(59, 17);
-			_checkBoxEnablePartialProfit.TabIndex = 0;
-			_checkBoxEnablePartialProfit.Text = "Enable";
-			_checkBoxEnablePartialProfit.UseVisualStyleBackColor = true;
-			_checkBoxEnablePartialProfit.CheckedChanged += _checkBoxEnablePartialProfit_Changed;
-			// 
-			// groupBox_Quantity
-			// 
-			_groupBoxQuantity.BackColor = SystemColors.ControlLight;
-			_groupBoxQuantity.Controls.Add(_buttonUpdateQuantity);
-			_groupBoxQuantity.Controls.Add(_numericUpDownQuantity);
-			_groupBoxQuantity.Location = new Point(6, 137);
-			_groupBoxQuantity.Margin = new Padding(2);
-			_groupBoxQuantity.Name = "groupBox_Quantity";
-			_groupBoxQuantity.Padding = new Padding(2);
-			_groupBoxQuantity.Size = new Size(154, 41);
-			_groupBoxQuantity.TabIndex = 4;
-			_groupBoxQuantity.TabStop = false;
-			_groupBoxQuantity.Text = "Quantity";
-			// 
-			// button_UpdateQuantity
-			// 
-			_buttonUpdateQuantity.BackColor = Color.SkyBlue;
-			_buttonUpdateQuantity.Location = new Point(8, 15);
-			_buttonUpdateQuantity.Margin = new Padding(2);
-			_buttonUpdateQuantity.Name = "button_UpdateQuantity";
-			_buttonUpdateQuantity.Size = new Size(59, 22);
-			_buttonUpdateQuantity.TabIndex = 1;
-			_buttonUpdateQuantity.Text = "Update";
-			_buttonUpdateQuantity.UseVisualStyleBackColor = false;
-			// 
-			// numericUpDown_Quantity
-			// 
-			_numericUpDownQuantity.Location = new Point(71, 16);
-			_numericUpDownQuantity.Margin = new Padding(2);
-			_numericUpDownQuantity.Maximum = new decimal(new[] { 1000000, 0, 0, 0 });
-			_numericUpDownQuantity.Minimum = new decimal(new[] { 1, 0, 0, 0 });
-			_numericUpDownQuantity.Name = "numericUpDown_Quantity";
-			_numericUpDownQuantity.Size = new Size(79, 20);
-			_numericUpDownQuantity.TabIndex = 0;
-			_numericUpDownQuantity.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownQuantity.Value = new decimal(new[] { 10, 0, 0, 0 });
-			// 
-			// button_ClosePosition
-			// 
-			_buttonClosePosition.BackColor = _disabledColor;
-			_buttonClosePosition.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-			_buttonClosePosition.ForeColor = Color.White;
-			_buttonClosePosition.Location = new Point(4, 154);
-			_buttonClosePosition.Margin = new Padding(2);
-			_buttonClosePosition.Name = "button_ClosePosition";
-			_buttonClosePosition.Size = new Size(144, 27);
-			_buttonClosePosition.TabIndex = 3;
-			_buttonClosePosition.Text = "MANUAL CLOSE 100%";
-			_buttonClosePosition.UseVisualStyleBackColor = false;
-			_buttonClosePosition.Click += button_ClosePositionClick;
-			// 
-			// button_ManualShort
-			// 
-			_buttonManualShort.BackColor = Color.MediumOrchid;
-			_buttonManualShort.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-			_buttonManualShort.ForeColor = Color.White;
-			_buttonManualShort.Location = new Point(79, 41);
-			_buttonManualShort.Margin = new Padding(2);
-			_buttonManualShort.Name = "button_ManualShort";
-			_buttonManualShort.Size = new Size(69, 27);
-			_buttonManualShort.TabIndex = 2;
-			_buttonManualShort.Text = "SHORT";
-			_buttonManualShort.UseVisualStyleBackColor = false;
-			_buttonManualShort.Click += _buttonShortClick;
-			// 
-			// button_ManualLong
-			// 
-			_buttonManualLong.BackColor = Color.FromArgb(194, 194, 44);
-			_buttonManualLong.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-			_buttonManualLong.ForeColor = Color.White;
-			_buttonManualLong.Location = new Point(4, 41);
-			_buttonManualLong.Margin = new Padding(2);
-			_buttonManualLong.Name = "button_ManualLong";
-			_buttonManualLong.Size = new Size(70, 27);
-			_buttonManualLong.TabIndex = 1;
-			_buttonManualLong.Text = "LONG";
-			_buttonManualLong.UseVisualStyleBackColor = false;
-			_buttonManualLong.Click += _buttonLongClick;
-			// 
-			// MainPanel
-			// 
-			_mainPanel.BackColor = SystemColors.Control;
-			_mainPanel.Controls.Add(_groupBox1);
-			_mainPanel.Controls.Add(_groupBoxMail);
-			_mainPanel.Controls.Add(_groupBoxStopToEntry);
-			_mainPanel.Controls.Add(_groupBoxTrailStop);
-			_mainPanel.Controls.Add(_groupBoxStatusWindow);
-			_mainPanel.Controls.Add(_groupBoxPartialProfit);
-			_mainPanel.Controls.Add(_groupBoxQuantity);
-			_mainPanel.Controls.Add(_groupBoxMode);
-			_mainPanel.Dock = DockStyle.Right;
-			_mainPanel.Location = new Point(931, 0);
-			_mainPanel.Margin = new Padding(2);
-			_mainPanel.Name = "MainPanel";
-			_mainPanel.Size = new Size(165, 831);
-			_mainPanel.TabIndex = 1;
-			// 
-			// groupBox1
-			// 
-			_groupBox1.Controls.Add(_label4);
-			_groupBox1.Controls.Add(_numericUpDownBarEntry);
-			_groupBox1.Controls.Add(_checkBoxEnableBarEntry);
-			_groupBox1.Location = new Point(6, 722);
-			_groupBox1.Margin = new Padding(2);
-			_groupBox1.Name = "groupBox1";
-			_groupBox1.Padding = new Padding(2);
-			_groupBox1.Size = new Size(154, 47);
-			_groupBox1.TabIndex = 2;
-			_groupBox1.TabStop = false;
-			_groupBox1.Text = "Bar Entry";
-			// 
-			// groupBox0
-			//
-			// 
-			_groupBoxMail.Controls.Add(_checkBoxEnableShortLongAlert);
-			_groupBoxMail.Location = new Point(6, 770);
-			_groupBoxMail.Margin = new Padding(2);
-			_groupBoxMail.Name = "groupBox0";
-			_groupBoxMail.Padding = new Padding(2);
-			_groupBoxMail.Size = new Size(154, 120);
-			_groupBoxMail.TabIndex = 50;
-			_groupBoxMail.TabStop = false;
-			_groupBoxMail.Text = "Mail Settings";
-			// 
-			// label4
-			// 
-			_label4.AutoSize = true;
-			_label4.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			_label4.Location = new Point(84, 21);
-			_label4.Margin = new Padding(2, 0, 2, 0);
-			_label4.Name = "label4";
-			_label4.Size = new Size(28, 13);
-			_label4.TabIndex = 13;
-			_label4.Text = "Bars";
-			_label4.TextAlign = ContentAlignment.MiddleLeft;
-			// 
-			// numericUpDown_BarEntry
-			// 
-			_numericUpDownBarEntry.Location = new Point(116, 18);
-			_numericUpDownBarEntry.Margin = new Padding(2);
-			_numericUpDownBarEntry.Maximum = new decimal(new[] { 99, 0, 0, 0 });
-			_numericUpDownBarEntry.Name = "numericUpDown_BarEntry";
-			_numericUpDownBarEntry.Size = new Size(34, 20);
-			_numericUpDownBarEntry.TabIndex = 12;
-			_numericUpDownBarEntry.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownBarEntry.Value = new decimal(new[] { 1, 0, 0, 0 });
-			// 
-			// checkBox_EnableBarEntry
-			// 
-			_checkBoxEnableBarEntry.AutoSize = true;
-			_checkBoxEnableBarEntry.Location = new Point(10, 20);
-			_checkBoxEnableBarEntry.Margin = new Padding(2);
-			_checkBoxEnableBarEntry.Name = "checkBox_EnableBarEntry";
-			_checkBoxEnableBarEntry.Size = new Size(59, 17);
-			_checkBoxEnableBarEntry.TabIndex = 5;
-			_checkBoxEnableBarEntry.Text = "Enable";
-			_checkBoxEnableBarEntry.UseVisualStyleBackColor = true;
-			_checkBoxEnableBarEntry.CheckedChanged += _checkBoxEnableBarEntry_CheckedChanged;
-			// 			 
-			// checkBox_EnableBarEntry
-			// 
-			_checkBoxEnableShortLongAlert.AutoSize = true;
-			_checkBoxEnableShortLongAlert.Location = new Point(10, 20);
-			_checkBoxEnableShortLongAlert.Margin = new Padding(2);
-			_checkBoxEnableShortLongAlert.Name = "checkBox_EnableMailEntry";
-			_checkBoxEnableShortLongAlert.Size = new Size(140, 17);
-			_checkBoxEnableShortLongAlert.TabIndex = 5;
-			_checkBoxEnableShortLongAlert.Text = "Enable LONG/SHORT";
-			_checkBoxEnableShortLongAlert.UseVisualStyleBackColor = true;
-			_checkBoxEnableShortLongAlert.Checked = true;
-			// 
-			// checkBox_EnablePartialProfitAlert
-			// 
-			_groupBoxMail.Controls.Add(_checkBoxEnablePartialProfitAlert);
-			_checkBoxEnablePartialProfitAlert.AutoSize = true;
-			_checkBoxEnablePartialProfitAlert.Location = new Point(10, 40);
-			_checkBoxEnablePartialProfitAlert.Margin = new Padding(2);
-			_checkBoxEnablePartialProfitAlert.Name = "checkBox_EnablePartialProfitAlert";
-			_checkBoxEnablePartialProfitAlert.Size = new Size(140, 17);
-			_checkBoxEnablePartialProfitAlert.TabIndex = 5;
-			_checkBoxEnablePartialProfitAlert.Text = "Enable Partial Profit";
-			_checkBoxEnablePartialProfitAlert.UseVisualStyleBackColor = true;
-			_checkBoxEnablePartialProfitAlert.CheckedChanged += _checkBoxEnablePartialProfitAlert_CheckedChanged;
-			// 
-			// checkBox_EnableTrailStopAlert
-			// 
-			_groupBoxMail.Controls.Add(_checkBoxEnableTrailStopAlert);
-			_checkBoxEnableTrailStopAlert.AutoSize = true;
-			_checkBoxEnableTrailStopAlert.Location = new Point(10, 60);
-			_checkBoxEnableTrailStopAlert.Margin = new Padding(2);
-			_checkBoxEnableTrailStopAlert.Name = "checkBox_EnableTrailStopAlert";
-			_checkBoxEnableTrailStopAlert.Size = new Size(140, 17);
-			_checkBoxEnableTrailStopAlert.TabIndex = 5;
-			_checkBoxEnableTrailStopAlert.Text = "Enable DTS";
-			_checkBoxEnableTrailStopAlert.UseVisualStyleBackColor = true;
-			_checkBoxEnableTrailStopAlert.CheckedChanged += _checkBoxEnableTrailStopAlert_CheckedChanged;
-			// 
-			// groupBox_TrailStop
-			// 
-			_groupBoxTrailStop.BackColor = SystemColors.ControlLight;
-			_groupBoxTrailStop.Controls.Add(_label9);
-			_groupBoxTrailStop.Controls.Add(_label8);
-			_groupBoxTrailStop.Controls.Add(_label7);
-			_groupBoxTrailStop.Controls.Add(_numericUpDownSwingIndicatorBars);
-			_groupBoxTrailStop.Controls.Add(_numericUpDownStopLevelTicks);
-			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStop);
-			_groupBoxTrailStop.Controls.Add(_numericUpDownHorizontalTicks);
-			_groupBoxTrailStop.Location = new Point(6, 599);
-			_groupBoxTrailStop.Margin = new Padding(2);
-			_groupBoxTrailStop.Name = "groupBox_TrailStop";
-			_groupBoxTrailStop.Padding = new Padding(2);
-			_groupBoxTrailStop.Size = new Size(154, 123);
-			_groupBoxTrailStop.TabIndex = 7;
-			_groupBoxTrailStop.TabStop = false;
-			_groupBoxTrailStop.Text = "Dynamic Trail Stop";
-			// 
-			// label9
-			// 
-			_label9.AutoSize = true;
-			_label9.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			_label9.Location = new Point(5, 102);
-			_label9.Margin = new Padding(2, 0, 2, 0);
-			_label9.Name = "label9";
-			_label9.Size = new Size(109, 13);
-			_label9.TabIndex = 16;
-			_label9.Text = "Horizontal [pips/ticks]";
-			_label9.TextAlign = ContentAlignment.MiddleLeft;
-			// 
-			// label8
-			// 
-			_label8.AutoSize = true;
-			_label8.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			_label8.Location = new Point(5, 81);
-			_label8.Margin = new Padding(2, 0, 2, 0);
-			_label8.Name = "label8";
-			_label8.Size = new Size(113, 13);
-			_label8.TabIndex = 15;
-			_label8.Text = "Stop Level [pips/ticks]";
-			_label8.TextAlign = ContentAlignment.MiddleLeft;
-			// 
-			// label7
-			// 
-			_label7.AutoSize = true;
-			_label7.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			_label7.Location = new Point(5, 59);
-			_label7.Margin = new Padding(2, 0, 2, 0);
-			_label7.Name = "label7";
-			_label7.Size = new Size(109, 13);
-			_label7.TabIndex = 14;
-			_label7.Text = "Swing Indicator [bars]";
-			_label7.TextAlign = ContentAlignment.MiddleLeft;
-			// 
-			// numericUpDown_SwingIndicatorBars
-			// 
-			_numericUpDownSwingIndicatorBars.Location = new Point(118, 57);
-			_numericUpDownSwingIndicatorBars.Margin = new Padding(2);
-			_numericUpDownSwingIndicatorBars.Maximum = new decimal(new[]
-			{
-				99,
-				0,
-				0,
-				0
-			});
-			_numericUpDownSwingIndicatorBars.Name = "numericUpDown_SwingIndicatorBars";
-			_numericUpDownSwingIndicatorBars.Size = new Size(34, 20);
-			_numericUpDownSwingIndicatorBars.TabIndex = 11;
-			_numericUpDownSwingIndicatorBars.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownSwingIndicatorBars.Value = new decimal(new[]
-			{
-				4,
-				0,
-				0,
-				0
-			});
-			// 
-			// numericUpDown_HorizonCrossTicks
-			// 
-			_numericUpDownStopLevelTicks.Location = new Point(118, 78);
-			_numericUpDownStopLevelTicks.Margin = new Padding(2);
-			_numericUpDownStopLevelTicks.Maximum = new decimal(new[]
-			{
-				99,
-				0,
-				0,
-				0
-			});
-			_numericUpDownStopLevelTicks.Name = "numericUpDown_HorizCrossTicks";
-			_numericUpDownStopLevelTicks.Size = new Size(34, 20);
-			_numericUpDownStopLevelTicks.TabIndex = 12;
-			_numericUpDownStopLevelTicks.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownStopLevelTicks.Value = new decimal(new[]
-			{
-				4,
-				0,
-				0,
-				0
-			});
-			// 
-			// checkBox_EnableTrailStop
-			// 
-			_checkBoxEnableTrailStop.AutoSize = true;
-			_checkBoxEnableTrailStop.Location = new Point(9, 18);
-			_checkBoxEnableTrailStop.Margin = new Padding(2);
-			_checkBoxEnableTrailStop.Name = "checkBox_EnableTrailStop";
-			_checkBoxEnableTrailStop.Size = new Size(59, 17);
-			_checkBoxEnableTrailStop.TabIndex = 4;
-			_checkBoxEnableTrailStop.Text = "Enable";
-			_checkBoxEnableTrailStop.UseVisualStyleBackColor = true;
-			_checkBoxEnableTrailStop.CheckedChanged += _checkBoxEnableTrailStopChanged;
-			//
-			// Text Box what present other Currency
-			// 
-			_textBoxOtherCurrency.Location = new Point(80, 18);
-			_textBoxOtherCurrency.Margin = new Padding(2);
-			_textBoxOtherCurrency.Name = "TextBoxOtherCurrency";
-			_textBoxOtherCurrency.Size = new Size(40, 17);
-			_textBoxOtherCurrency.Text = "6A";
-
-			// 
-			// numericUpDown_StopLevelTicks
-			// 
-			_numericUpDownHorizontalTicks.Location = new Point(118, 99);
-			_numericUpDownHorizontalTicks.Margin = new Padding(2);
-			_numericUpDownHorizontalTicks.Maximum = new decimal(new[] { 99, 0, 0, 0 });
-			_numericUpDownHorizontalTicks.Name = "numericUpDown_StopLevelTicks";
-			_numericUpDownHorizontalTicks.Size = new Size(34, 20);
-			_numericUpDownHorizontalTicks.TabIndex = 13;
-			_numericUpDownHorizontalTicks.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownHorizontalTicks.Value = new decimal(new[] { 9, 0, 0, 0 });
-			_radioButtonNone = new RadioButton();
-			_radioButtonEntryLine = new RadioButton();
-			_radioButtonPartialProfit = new RadioButton();
-
-			_radioButtonNone.AutoSize = true;
-			_radioButtonNone.Location = new Point(5, 94);
-			_radioButtonNone.Name = "radioButtonNone";
-			_radioButtonNone.Size = new Size(51, 17);
-			_radioButtonNone.TabIndex = 0;
-			_radioButtonNone.TabStop = true;
-			_radioButtonNone.Text = "None";
-			_radioButtonNone.UseVisualStyleBackColor = true;
-			_radioButtonNone.CheckedChanged += _radioBoxNone;
-			_radioButtonNone.Checked = true;
-
-			_radioButtonEntryLine.AutoSize = true;
-			_radioButtonEntryLine.Location = new Point(5, 112);
-			_radioButtonEntryLine.Name = "radioButtonEntryLine";
-			_radioButtonEntryLine.Size = new Size(72, 17);
-			_radioButtonEntryLine.TabIndex = 1;
-			_radioButtonEntryLine.TabStop = true;
-			_radioButtonEntryLine.Text = "Entry Line";
-			_radioButtonEntryLine.UseVisualStyleBackColor = true;
-			_radioButtonEntryLine.CheckedChanged += _radioBoxEntryLine;
-
-			_radioButtonPartialProfit.AutoSize = true;
-			_radioButtonPartialProfit.Location = new Point(5, 130);
-			_radioButtonPartialProfit.Name = "radioButtonPartialProfit";
-			_radioButtonPartialProfit.Size = new Size(81, 17);
-			_radioButtonPartialProfit.TabIndex = 2;
-			_radioButtonPartialProfit.TabStop = true;
-			_radioButtonPartialProfit.Text = "Partial Profit";
-			_radioButtonPartialProfit.UseVisualStyleBackColor = true;
-			_radioButtonPartialProfit.CheckedChanged += _radioBoxPartialProfit;
-			// 
-			// groupBox_StopToEntry
-			// 
-			_groupBoxStopToEntry.Controls.Add(_radioButtonNone);
-			_groupBoxStopToEntry.Controls.Add(_radioButtonEntryLine);
-			_groupBoxStopToEntry.Controls.Add(_radioButtonPartialProfit);
-			_groupBoxStopToEntry.Controls.Add(_labelPipsToActivateText);
-			_groupBoxStopToEntry.Controls.Add(_labelPipsToActivateTextDistance);
-			_groupBoxStopToEntry.Controls.Add(_numericUpDownPipTicksToActivate);
-			_groupBoxStopToEntry.Controls.Add(_numericUpDownPipTicksToActivateDistance);
-			_groupBoxStopToEntry.Controls.Add(_buttonManualMoveStop);
-			_groupBoxStopToEntry.Location = new Point(6, 446);
-			_groupBoxStopToEntry.Margin = new Padding(2);
-			_groupBoxStopToEntry.Name = "groupBox_StopToEntry";
-			_groupBoxStopToEntry.Padding = new Padding(2);
-			_groupBoxStopToEntry.Size = new Size(154, 152);
-			_groupBoxStopToEntry.TabIndex = 2;
-			_groupBoxStopToEntry.TabStop = false;
-			_groupBoxStopToEntry.Text = "Stop to Entry/Partial Profit";
-			// 
-			// label3
-			// 
-			_labelPipsToActivateText.AutoSize = true;
-			_labelPipsToActivateText.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			_labelPipsToActivateText.Location = new Point(5, 54);
-			_labelPipsToActivateText.Margin = new Padding(2, 0, 2, 0);
-			_labelPipsToActivateText.Name = "label3";
-			_labelPipsToActivateText.Size = new Size(111, 13);
-			_labelPipsToActivateText.TabIndex = 13;
-			_labelPipsToActivateText.Text = "Pips to activate";
-			_labelPipsToActivateText.TextAlign = ContentAlignment.MiddleLeft;
-			// 
-			// label3
-			// 
-			_labelPipsToActivateTextDistance.AutoSize = true;
-			_labelPipsToActivateTextDistance.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			_labelPipsToActivateTextDistance.Location = new Point(5, 75);
-			_labelPipsToActivateTextDistance.Margin = new Padding(2, 0, 2, 0);
-			_labelPipsToActivateTextDistance.Name = "Pips to activate Distance";
-			_labelPipsToActivateTextDistance.Size = new Size(111, 13);
-			_labelPipsToActivateTextDistance.TabIndex = 13;
-			_labelPipsToActivateTextDistance.Text = "Distance";
-			_labelPipsToActivateTextDistance.TextAlign = ContentAlignment.MiddleLeft;
-			// 
-			// numericUpDown_PipTicksToActivate
-			// 
-			_numericUpDownPipTicksToActivate.Location = new Point(90, 51);
-			_numericUpDownPipTicksToActivate.Margin = new Padding(2);
-			_numericUpDownPipTicksToActivate.Maximum = new decimal(new[] { 10000, 0, 0, 0 });
-			_numericUpDownPipTicksToActivate.Name = "numericUpDown_PipTicksToActivate";
-			_numericUpDownPipTicksToActivate.Size = new Size(60, 20);
-			_numericUpDownPipTicksToActivate.TabIndex = 12;
-			_numericUpDownPipTicksToActivate.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownPipTicksToActivate.Value = new decimal(new[] { 10, 0, 0, 0 });
-			// 
-			// numericUpDown_PipTicksToActivateDistance
-			// 
-			_numericUpDownPipTicksToActivateDistance.Location = new Point(90, 74);
-			_numericUpDownPipTicksToActivateDistance.Maximum = new decimal(new[] { 1000, 0, 0, 0 });
-			_numericUpDownPipTicksToActivateDistance.Minimum = -1000;
-			_numericUpDownPipTicksToActivateDistance.Size = new Size(60, 20);
-			_numericUpDownPipTicksToActivateDistance.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownPipTicksToActivateDistance.Value = new decimal(new[] { 5, 0, 0, 0 });
-			// 
-			// button_ManualMoveStop
-			// 
-			_buttonManualMoveStop.BackColor = _disabledColor;
-			_buttonManualMoveStop.Font = new Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, 0);
-			_buttonManualMoveStop.ForeColor = Color.White;
-			_buttonManualMoveStop.Location = new Point(5, 19);
-			_buttonManualMoveStop.Margin = new Padding(2);
-			_buttonManualMoveStop.Name = "button_ManualMoveStop";
-			_buttonManualMoveStop.Size = new Size(145, 27);
-			_buttonManualMoveStop.TabIndex = 3;
-			_buttonManualMoveStop.Text = "MANUAL MOVE STOP";
-			_buttonManualMoveStop.UseVisualStyleBackColor = false;
-			_buttonManualMoveStop.Click += _buttonManualMoveStopOnClick;
-			// 
-			// groupBox_Mode
-			// 
-			_groupBoxMode.BackColor = SystemColors.Control;
-			_groupBoxMode.Controls.Add(_buttonActivate);
-			_groupBoxMode.Controls.Add(_buttonClearSelection);
-			_groupBoxMode.Controls.Add(_buttonMakeHorizontalLine);
-			_groupBoxMode.Controls.Add(_checkBoxOtherCurrency);
-			_groupBoxMode.Controls.Add(_textBoxOtherCurrency);
-			_groupBoxMode.Controls.Add(_buttonManualLong);
-			_groupBoxMode.Controls.Add(_buttonManualShort);
-			_groupBoxMode.Controls.Add(_buttonClosePosition);
-			_groupBoxMode.Location = new Point(6, 181);
-			_groupBoxMode.Margin = new Padding(2);
-			_groupBoxMode.Name = "groupBox_Mode";
-			_groupBoxMode.Padding = new Padding(2);
-			_groupBoxMode.Size = new Size(154, 189);
-			_groupBoxMode.TabIndex = 6;
-			_groupBoxMode.TabStop = false;
-			_groupBoxMode.Text = "Mode";
-			// 
-			// label1
-			// 
-			_checkBoxOtherCurrency.AutoSize = true;
-			_checkBoxOtherCurrency.Location = new Point(6, 21);
-			_checkBoxOtherCurrency.Margin = new Padding(2, 0, 2, 0);
-			_checkBoxOtherCurrency.Name = "_checkBoxOtherCurrency";
-			_checkBoxOtherCurrency.Size = new Size(63, 13);
-			_checkBoxOtherCurrency.TabIndex = 7;
-			_checkBoxOtherCurrency.Text = "Trade on:";
-			_checkBoxOtherCurrency.CheckedChanged += CheckBoxOtherCurrencyOnCheckedChanged;
-			//
-			//Text box for name of other currency
-			// 
-			_textBoxOtherCurrency.Location = new Point(80, 21);
-			_textBoxOtherCurrency.Margin = new Padding(2, 0, 2, 0);
-			_textBoxOtherCurrency.Name = "TextBoxOtherCurreny";
-			_textBoxOtherCurrency.Size = new Size(68, 13);
-			_textBoxOtherCurrency.TabIndex = 8;
-			_textBoxOtherCurrency.Text = _otherInstrumentName;
-			_textBoxOtherCurrency.Enabled = false;
-
-			// button_MakeHorizonLine
-			// 
-			_buttonMakeHorizontalLine.BackColor = Color.SkyBlue;
-			_buttonMakeHorizontalLine.Font = new Font("Microsoft Sans Serif", 8.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			_buttonMakeHorizontalLine.Location = new Point(4, 126);
-			_buttonMakeHorizontalLine.Margin = new Padding(2);
-			_buttonMakeHorizontalLine.Name = "button_MakeHorizLine";
-			_buttonMakeHorizontalLine.Size = new Size(144, 26);
-			_buttonMakeHorizontalLine.TabIndex = 4;
-			_buttonMakeHorizontalLine.Text = "MAKE HORIZONTAL";
-			_buttonMakeHorizontalLine.UseVisualStyleBackColor = false;
-			_buttonMakeHorizontalLine.Click += button_MakeHorizontalLine_Click;
-
-			//Some text to put here
-			_groupBoxStatusWindow.ResumeLayout(false);
-			_groupBoxStatusWindow.PerformLayout();
-			_groupBoxPartialProfit.ResumeLayout(false);
-			_groupBoxPartialProfit.PerformLayout();
-			_groupBoxQuantity.ResumeLayout(false);
-			((ISupportInitialize)(_numericUpDownQuantity)).EndInit();
-			_mainPanel.ResumeLayout(false);
-			_groupBox1.ResumeLayout(false);
-			_groupBox1.PerformLayout();
-			((ISupportInitialize)(_numericUpDownBarEntry)).EndInit();
-
-			_groupBoxTrailStop.ResumeLayout(false);
-			_groupBoxTrailStop.PerformLayout();
-			((ISupportInitialize)(_numericUpDownSwingIndicatorBars)).EndInit();
-			((ISupportInitialize)(_numericUpDownStopLevelTicks)).EndInit();
-			((ISupportInitialize)(_numericUpDownHorizontalTicks)).EndInit();
-			_groupBoxStopToEntry.ResumeLayout(false);
-			_groupBoxStopToEntry.PerformLayout();
-			((ISupportInitialize)(_numericUpDownPipTicksToActivate)).EndInit();
-			_groupBoxMode.ResumeLayout(false);
-			_groupBoxMode.PerformLayout();
-			ChartControl.Controls.Add(_mainPanel);
-		}
-
-
-		private AccountInfo _windowAccountInfo;
 
 		private void _buttonInfoClick(object sender, EventArgs eventArgs)
 		{
@@ -2291,6 +1381,7 @@ namespace NinjaTrader.Strategy
 				if (_strategyState == StrategyState.NotActive || _numericUpDownBarEntry.Value == 0)
 				{
 					MessageBox.Show("You are got Bar to Entry Zero or You are not active yet");
+					_checkBoxEnableBarEntry.Checked = false;
 					return;
 
 				}
@@ -2310,34 +1401,10 @@ namespace NinjaTrader.Strategy
 
 		}
 
-		private void CheckBoxOtherCurrencyOnCheckedChanged(object sender, EventArgs eventArgs)
+		private void _checkBoxOtherCurrencyOnCheckedChanged(object sender, EventArgs eventArgs)
 		{
 			_textBoxOtherCurrency.Enabled = _checkBoxOtherCurrency.Checked;
 		}
-
-		private Button _buttonActivate;
-		private Button _buttonInfo;
-		private readonly Color _deactivateColor = Color.OrangeRed;
-		private DynamicTrailingStop _currentDynamicTrailingStop;
-		private int _millisecondsTimeout = 15000;
-		private double _profitLoss;
-		private double _profitPercent;
-
-		private string _mailAddress = "daniel@danielwardzynski.com";
-		private string _eMailLogin = "chartslopetrader";
-		private string _eMailPassword = "123qwe456rty";
-		//		private string _mailAddress = "comman.games@outlook.com";
-		//		private string _eMailLogin = "alfaa.gen";
-		//		private string _eMailPassword = "Train@concentration";
-		private bool _doNoRemoveAltLine;
-		private int EntryLineTouches = 0;
-		private double _ohterProfitLoss;
-		private double _otherProfitPercent;
-		private bool _wasPrtialProfit;
-		public double ProportionalDistance { get; set; }
-
-
-		#endregion
 
 		public double RayPriceNotRound(IRay ray)
 		{
@@ -2355,11 +1422,6 @@ namespace NinjaTrader.Strategy
 			double rayPrice = (-oneBarDistance * ray.Anchor2BarsAgo) + ray.Anchor2Y;
 			return Instrument.MasterInstrument.Round2TickSize(rayPrice);
 		}
-
-		private string SendingText { get; set; }
-		private string SendingTopic { get; set; }
-
-
 
 
 		private void SendMail(string topic, string text)
@@ -2439,23 +1501,6 @@ namespace NinjaTrader.Strategy
 			}
 		}
 
-		private bool IsUpLefthite(Bitmap chartPicture, int weight, int height, int i)
-		{
-			for (int j = weight - 1; j > weight - i; j -= 2)
-			{
-				for (int k = height - 1; k > height - i; k -= 2)
-				{
-					if (chartPicture.GetPixel(j, k) != Color.White)
-					{
-						return false;
-					}
-				}
-
-			}
-			return true;
-
-		}
-
 		private string TextFormater(string action, bool isEntry, bool isPartialProfit)
 		{
 			try
@@ -2499,10 +1544,6 @@ namespace NinjaTrader.Strategy
 
 		}
 
-
-
-
-
 		public Bitmap GetChartPicture()
 		{
 			Bitmap bmp;
@@ -2534,472 +1575,48 @@ namespace NinjaTrader.Strategy
 			_mainPanel.DrawToBitmap(bmp, _mainPanel.ClientRectangle);
 			return bmp;
 		}
+
+		#region Visible Proportys
+
+		[Description("The other currency that we will use for trading")]
+		[GridCategory("Parameters")]
+		[Gui.Design.DisplayName("Second currency")]
+		public string OtherInstrumentName
+		{
+			get { return _otherInstrumentName; }
+			set { _otherInstrumentName = value; }
+		}
+
+
+		[Description("The Email Address to what we will be sending the lists")]
+		[GridCategory("Parameters")]
+		[Gui.Design.DisplayName("E-Mail")]
+		public string E_MailAddress
+		{
+			get { return _mailAddress; }
+			set { _mailAddress = value; }
+		}
+
+		[Description("The Email login to GMAIL!")]
+		[GridCategory("Parameters")]
+		[Gui.Design.DisplayName(" From E-Mail Login")]
+		public string E_MailLogin
+		{
+			get { return _eMailLogin; }
+			set { _eMailLogin = value; }
+		}
+
+		[Description("The Email password to GMAIL!")]
+		[GridCategory("Parameters")]
+		[Gui.Design.DisplayName("From E-Mail Password")]
+		public string E_MailPassword
+		{
+			get { return _eMailPassword; }
+			set { _eMailPassword = value; }
+		}
+
+		#endregion
 	}
 
 	//Let's take a look how it works
-
-	internal class RayContainer
-	{
-		#region Variables
-
-		private static readonly Color EnterColor = Color.DarkRed;
-		private static readonly Color TpColor = Color.Lime;
-		private static readonly Color StopColor = Color.Red;
-		private static readonly Color HcColor = Color.Purple;
-		private static readonly Color AColor = Color.FromArgb(141, 0, 229);
-
-		public MarketPosition PositionType;
-		public static int TicksTarget = 5;
-
-		public IRay OriginRay;
-		public IRay EntryRay;
-		public IRay StopRay;
-		public IRay HalfCloseRay;
-		public IRay ProfitTargetRay;
-		public IRay AlternativeRay;
-
-		private readonly Color _dotColor = Color.Black;
-		private readonly Color _textColor = Color.Black;
-		private IDot _eDot;
-		private IText _eText;
-
-		private IDot _sDot;
-		private IText _sText;
-		private IDot _tpDot;
-		private IText _tpText;
-		private IText _hcText;
-		private IDot _hcDot;
-
-		public readonly int TextShift = 10;
-		public bool ClosingHalf;
-		private readonly ChartSlopeTrader _strategy;
-		public double Distance;
-		public bool IsAlternativeLine { get; private set; }
-		#endregion
-		public RayContainer(MarketPosition marketPosition, IRay ray, ChartSlopeTrader strategy, bool isCloseHalf, bool isDts)
-		{
-			//Initialization global variables
-			_strategy = strategy;
-			PositionType = marketPosition;
-			Distance = strategy.ProportionalDistance < _strategy.TickSize * 3 ? 3 * strategy.TickSize : strategy.ProportionalDistance;
-			IsAlternativeLine = false;
-
-			//Set some local variables
-			double distance = Distance;
-			//Setting  up down if we are in the long
-			if (marketPosition == MarketPosition.Long)
-				distance *= -1;
-
-			//Crating the lines
-			OriginRay = ray;
-
-			EntryRay = strategy.DrawRay("Enter", false,
-				ray.Anchor1BarsAgo, ray.Anchor1Y + (distance * .3), ray.Anchor2BarsAgo, ray.Anchor2Y + (distance * .3),
-				EnterColor, DashStyle.Solid, 2);
-
-			StopRay = strategy.DrawRay("Stop", false,
-				ray.Anchor1BarsAgo, ray.Anchor1Y + distance, ray.Anchor2BarsAgo, ray.Anchor2Y + distance,
-				StopColor, DashStyle.Dash, 2);
-
-			ProfitTargetRay = strategy.DrawRay("TakeProfit", false,
-				ray.Anchor1BarsAgo, ray.Anchor1Y - distance, ray.Anchor2BarsAgo, ray.Anchor2Y - distance,
-				TpColor, DashStyle.Dash, 2);
-
-			if (isDts)
-			{
-				MadeStopRayHorizontal();
-			}
-			if (isCloseHalf)
-			{
-				PartialProfitEnable(false);
-			}
-			//Unlocking those rays if want to make them clear
-			EntryRay.Locked = false;
-			StopRay.Locked = false;
-			ProfitTargetRay.Locked = false;
-		}
-
-
-		private void MadeStopRayHorizontal()
-		{
-			double position = _strategy.RayPrice(StopRay);
-			StopRay.Anchor1Y = position;
-			StopRay.Anchor2Y = position;
-		}
-
-		public void Update()
-		{
-			double d10 = Distance / 100;
-			//For enter Ray
-			_eDot = _strategy.DrawDot("enterDot", true, 0, RealRayPrice(EntryRay), _dotColor);
-			double s = RealRayPrice(EntryRay);
-			_eText = _strategy.DrawText("enterText", TextForma(s), 0, RealRayPrice(EntryRay) + d10, _textColor);
-
-			//For stop Ray
-			_sDot = _strategy.DrawDot("stopDot", true, 0, RealRayPrice(StopRay), _dotColor);
-			double text = RealRayPrice(StopRay);
-			_sText = _strategy.DrawText("stopText", TextForma(text), 0, RealRayPrice(StopRay) + d10, _textColor);
-
-			//For TP Ray
-			_tpDot = _strategy.DrawDot("TPDot", true, 0, RealRayPrice(ProfitTargetRay), _dotColor);
-			double priceText = RealRayPrice(ProfitTargetRay);
-			_tpText = _strategy.DrawText("TPText", TextForma(priceText), 0, RealRayPrice(ProfitTargetRay) + d10, _textColor);
-
-
-			//Check if have turn on the Closing Half and is The ray exist because without ray we will got the error
-			if (ClosingHalf && HalfCloseRay != null)
-			{
-				double priceT = RealRayPrice(HalfCloseRay);
-				_hcDot = _strategy.DrawDot("HCDot", true, 0, priceT, _dotColor);
-
-				_hcText = _strategy.DrawText("HCText", TextForma(priceT), 0, RealRayPrice(HalfCloseRay) + d10, _textColor);
-			}
-		}
-
-		private string TextForma(double price)
-		{
-			string priceText =
-				_strategy.Instrument.MasterInstrument.Round2TickSize(price).ToString(CultureInfo.InvariantCulture) + "\n";
-			return new string(' ', priceText.Length + TextShift) + priceText;
-		}
-
-		public void Clear()
-		{
-			//Removing lines
-			_strategy.RemoveDrawObject(EntryRay);
-			_strategy.RemoveDrawObject(StopRay);
-			_strategy.RemoveDrawObject(ProfitTargetRay);
-
-			//Removing Dots
-			_strategy.RemoveDrawObject(_eDot);
-			_strategy.RemoveDrawObject(_sDot);
-			_strategy.RemoveDrawObject(_tpDot);
-
-			//Removing Text
-			_strategy.RemoveDrawObject(_sText);
-			_strategy.RemoveDrawObject(_eText);
-			_strategy.RemoveDrawObject(_tpText);
-
-			ClearHalfLine();
-		}
-
-		public void ClearHalfLine()
-		{
-			//Removing half line 
-			if (HalfCloseRay != null) _strategy.RemoveDrawObject(HalfCloseRay);
-			if (_hcText != null) _strategy.RemoveDrawObject(_hcText);
-			if (_hcDot != null) _strategy.RemoveDrawObject(_hcDot);
-			ClosingHalf = false;
-		}
-
-		public void PartialProfitEnable(bool exit)
-		{
-			if (IsAlternativeLine)
-			{
-				_strategy.RemoveDrawObject(AlternativeRay);
-				IsAlternativeLine = false;
-			}
-			ClosingHalf = true;
-			//Distance we will count from profit Ray
-			double distance;
-			//to Made it between price and entry line
-			//				= (_tpDot.Y - _strategy._currentPrice) / 2;
-			//			if (!exit)
-			distance = (_tpDot.Y - _eDot.Y) / 2;
-			//Drawing the ray
-			HalfCloseRay = _strategy.DrawRay("HalfClose", false,
-				(ProfitTargetRay.Anchor1BarsAgo),
-				(ProfitTargetRay.Anchor1Y - distance),
-				(ProfitTargetRay.Anchor2BarsAgo),
-				(ProfitTargetRay.Anchor2Y - distance),
-				HcColor, DashStyle.Dash, 2);
-
-			Update();
-			HalfCloseRay.Locked = false;
-		}
-
-		public void ParialProfitDisable()
-		{
-			CreateAlternativeLine();
-			ClosingHalf = false;
-			//Remove the ray if we got it already
-			ClearHalfLine();
-		}
-
-		private void CreateAlternativeLine()
-		{
-			IsAlternativeLine = true;
-			AlternativeRay = _strategy.DrawRay("Alternative Ray", true, HalfCloseRay.Anchor1BarsAgo, HalfCloseRay.Anchor1Y,
-				HalfCloseRay.Anchor2BarsAgo, HalfCloseRay.Anchor2Y, AColor, DashStyle.Solid, 2);
-			AlternativeRay.Locked = true;
-		}
-
-
-
-		public double RealRayPrice(IRay ray)
-		{
-			//So how much step per bar we got here
-			double oneBarDistance = (ray.Anchor1Y - ray.Anchor2Y) / (ray.Anchor1BarsAgo - ray.Anchor2BarsAgo);
-			//Now how add the count of those steps to over lest price and then return 
-			double rayPrice = (-oneBarDistance * ray.Anchor2BarsAgo) + ray.Anchor2Y;
-			return rayPrice;
-		}
-
-		public void RemoveAlternativeRay()
-		{
-			if (IsAlternativeLine)
-			{
-				IsAlternativeLine = false;
-				_strategy.RemoveDrawObject(AlternativeRay);
-			}
-		}
-	}
-
-	internal class DynamicTrailingStop
-	{
-		public struct Slope
-		{
-			public int Bar;
-			public double Price;
-			public Slope(int bar, double price)
-			{
-				Bar = bar;
-				Price = price;
-			}
-		}
-
-		private static readonly Color SlopeLineColor = Color.Yellow;
-		private readonly ChartSlopeTrader _strategy;
-		private readonly RayContainer _rayContainer;
-		public MarketPosition PositonType;
-		private bool _isWaitSlope;
-		private Slope _lastSlope;
-		private Slope _currentSlope;
-		private IRay _ray;
-		private IDot _dot;
-		private IText _text;
-		private int _lastMinimumOrMaximum;
-
-		public DynamicTrailingStop(ChartSlopeTrader strategy, RayContainer rayContainer)
-		{
-			//Setting the variables
-			_strategy = strategy;
-			_rayContainer = rayContainer;
-			PositonType = rayContainer.PositionType;
-			_isWaitSlope = true;
-			_lastMinimumOrMaximum = 0;
-			_lastSlope = new Slope(0, 0);
-
-			//Getting the first slope
-			Slope tempSlope = GetFirstStlope(0, Math.Min(32, strategy.Low.Count - 1));
-			if (Math.Abs(tempSlope.Price) < 0.01)
-				return;
-
-			_currentSlope = tempSlope;
-			UpdateSlopeLine(_currentSlope);
-			_isWaitSlope = false;
-			_strategy.SendMail_dtsNewSlopeLineNew(_currentSlope.Price);
-
-		}
-
-		~DynamicTrailingStop()
-		{
-			Clear();
-		}
-
-		public void Clear()
-		{
-			_rayContainer.StopRay.Locked = false;
-			_strategy.RemoveDrawObject(_ray);
-			_strategy.RemoveDrawObject(_dot);
-			_strategy.RemoveDrawObject(_text);
-			_strategy.ChartControl.ChartPanel.Invalidate();
-		}
-
-		private void SetStopRay(double price)
-		{
-			if (Math.Abs(price) < 0.1)
-				return;
-			_rayContainer.StopRay.Anchor1Y = price;
-			_rayContainer.StopRay.Anchor2Y = price;
-			_rayContainer.StopRay.Anchor1BarsAgo = _currentSlope.Bar;
-			_rayContainer.StopRay.Anchor2BarsAgo = _currentSlope.Bar - 1;
-			_rayContainer.StopRay.Locked = true;
-			_strategy.ChartControl.ChartPanel.Invalidate();
-
-		}
-
-		private string TextForma(double price)
-		{
-			string priceText = price.ToString(CultureInfo.InvariantCulture) + "\n";
-			return new string(' ', priceText.Length + _rayContainer.TextShift) + priceText;
-		}
-
-		public void UpdateSlopeLine(Slope slope)
-		{
-			double price = _strategy.Instrument.MasterInstrument.Round2TickSize(slope.Price);
-			_ray = _strategy.DrawRay("Slope", false, slope.Bar, price, slope.Bar - 1, price, SlopeLineColor, DashStyle.Solid, 2);
-			_dot = _strategy.DrawDot("slopeDot", false, 0, price, Color.Black);
-			_text = _strategy.DrawText("HCText", TextForma(price), 0, price, Color.Black);
-			_strategy.ChartControl.ChartPanel.Invalidate();
-		}
-
-		public Slope GetFirstStlope(int from, int till)
-		{
-			return PostResult(till, GetLastSlope(from, till));
-
-		}
-		public Slope GetLastSlope(int from, int till)
-		{
-			int swing = _strategy.SwingIndicatorBars;
-
-			till = Math.Min(till, _strategy.Low.Count);
-			if (PositonType == MarketPosition.Long)
-				till = Math.Min(till, _strategy.High.Count);
-
-			Slope result = new Slope(0, 0);
-			for (int i = from + swing; i < till; i++)
-			{
-				int count = 0;
-				for (int j = 0; j < swing; j++)
-				{
-					if (PositonType == MarketPosition.Short && _strategy.Low[i] < _strategy.Low[i - j])
-						count++;
-
-					else if (PositonType == MarketPosition.Long && _strategy.High[i] > _strategy.High[i - j])
-						count++;
-
-				}
-				if (count == swing - 1)
-				{
-					int barsAgo = i;
-
-					if (PositonType == MarketPosition.Short)
-						result = new Slope(barsAgo, _strategy.Low[barsAgo]);
-					else if (PositonType == MarketPosition.Long)
-						result = new Slope(barsAgo, _strategy.High[barsAgo]);
-					//No need to search forward
-					break;
-				}
-			}
-			return result;
-		}
-
-		private Slope PostResult(int till, Slope result)
-		{
-			while (result.Bar + 1 < till)
-			{
-				if (PositonType == MarketPosition.Long)
-				{
-					if (_strategy.High[result.Bar + 1] >= _strategy.High[result.Bar])
-						result = new Slope(result.Bar + 1, _strategy.High[result.Bar + 1]);
-					else
-						break;
-				}
-				else
-				{
-					if (_strategy.Low[result.Bar + 1] <= _strategy.Low[result.Bar])
-						result = new Slope(result.Bar + 1, _strategy.Low[result.Bar + 1]);
-					else
-						break;
-				}
-			}
-			return result;
-		}
-
-		public double LocalMin(int start, int end)
-		{
-			int postion = 0;
-			return LocalMin(start, end, ref postion);
-		}
-
-		public double LocalMin(int start, int end, ref int position)
-		{
-			double result = _strategy.Low[start];
-			for (int i = start; i <= end; i++)
-			{
-				if (_strategy.Low[i] <= result)
-				{
-					result = _strategy.Low[i];
-					position = i;
-				}
-			}
-			return result;
-		}
-
-		public double LocalMax(int start, int end)
-		{
-			int position = 0;
-			return LocalMax(start, end, ref position);
-		}
-
-		public double LocalMax(int start, int end, ref int position)
-		{
-			double result = _strategy.High[start];
-			for (int i = start; i <= end; i++)
-			{
-				if (_strategy.High[i] >= result)
-				{
-					result = _strategy.High[i];
-					position = i;
-				}
-			}
-			return result;
-		}
-
-		public void NewBar()
-		{
-			_currentSlope.Bar++;
-			_lastSlope.Bar++;
-			_lastMinimumOrMaximum++;
-		}
-
-		public void UpdateFirstBar()
-		{
-			//If we do not wait for new Slow
-			if (_isWaitSlope) //We wait for a slope
-			{
-				Slope tempSlope = GetLastSlope(0, _lastMinimumOrMaximum);
-				if (Math.Abs(tempSlope.Price) < 0.01)
-					return;
-
-				if ((PositonType == MarketPosition.Long && tempSlope.Price > _lastSlope.Price) || (PositonType == MarketPosition.Short && tempSlope.Price < _lastSlope.Price))
-				{
-					_currentSlope = tempSlope;
-					UpdateSlopeLine(_currentSlope);
-					_isWaitSlope = false;
-					_strategy.SendMail_dtsNewSlopeLineNew(_currentSlope.Price);
-				}
-
-			}
-		}
-
-		public void UpdateEntry(double currentPrice)
-		{
-			if (!_isWaitSlope)
-			{
-				if (PositonType == MarketPosition.Long && currentPrice > _currentSlope.Price + _strategy.SwingHorizontal)
-				{
-					_lastSlope = _currentSlope;
-					SetStopRay(LocalMin(0, _currentSlope.Bar, ref _lastMinimumOrMaximum) - _strategy.StopLevel);
-					SavingSlopeAndEmail();
-				}
-				else if (PositonType == MarketPosition.Short && currentPrice < _currentSlope.Price - _strategy.SwingHorizontal)
-				{
-					_lastSlope = _currentSlope;
-					SetStopRay(LocalMax(0, _currentSlope.Bar, ref _lastMinimumOrMaximum) + _strategy.StopLevel);
-					SavingSlopeAndEmail();
-				}
-			}
-
-		}
-
-		private void SavingSlopeAndEmail()
-		{
-
-
-			_isWaitSlope = true;
-			_strategy.SendMail_dtsStopLineMoved();
-		}
-	}
 }
