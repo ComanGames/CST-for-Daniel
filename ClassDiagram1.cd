@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="NinjaTrader.Strategy.ChartSlopeTrader" Collapsed="true">
+    <Position X="3.5" Y="1.75" Width="1.5" />
+    <NestedTypes>
+      <Enum Name="NinjaTrader.Strategy.ChartSlopeTrader.StrategyState" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>Strategy\ChartSlopeTrader.cs</NewMemberFileName>
+        </TypeIdentifier>
+      </Enum>
+    </NestedTypes>
+    <TypeIdentifier>
+      <HashCode>CNuKzYPGloxG6aVRfCBetu7iTE3b0NQaAEIt7iWNN4M=</HashCode>
+      <FileName>Strategy\ChartSlopeTrader.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="NinjaTrader.Strategy.RayContainer" Collapsed="true">
+    <Position X="3.5" Y="2.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAQACAACCAAmRGBECAQAQIYAFACAAAFJABgQCBJEgCI=</HashCode>
+      <FileName>Strategy\ChartSlopeTrader.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="NinjaTrader.Strategy.DynamicTrailingStop" Collapsed="true">
+    <Position X="5.25" Y="1.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>ABBABAAACACAAAAQDAIMBgAIpAAAgAAIAABAgBJAAAA=</HashCode>
+      <FileName>Strategy\ChartSlopeTrader.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>
