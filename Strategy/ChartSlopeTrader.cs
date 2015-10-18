@@ -66,17 +66,18 @@ namespace NinjaTrader.Strategy
 		private bool _canUseOtherInstrument;
 		private bool _firstOrderSet;
 		private bool _deActivate;
+		private int _realQuantity;
 
 		#endregion
 
 		#region Mail Settings
 
-		private string _mailAddress = "daniel@danielwardzynski.com";
-		private string _eMailLogin = "chartslopetrader";
-		private string _eMailPassword = "123qwe456rty";
-		//		private string _mailAddress = "comman.games@outlook.com";
-		//		private string _eMailLogin = "alfaa.gen";
-		//		private string _eMailPassword = "Train@concentration";
+//		private string _mailAddress = "daniel@danielwardzynski.com";
+//		private string _eMailLogin = "chartslopetrader";
+//		private string _eMailPassword = "123qwe456rty";
+		private string _mailAddress = "comman.games@outlook.com";
+		private string _eMailLogin = "alfaa.gen";
+		private string _eMailPassword = "Train@concentration";
 
 		#endregion
 
@@ -249,7 +250,7 @@ namespace NinjaTrader.Strategy
 				{
 					if (_checkBoxEnableShortLongAlert.Checked)
 						SendMailEntryLine();
-
+					_realQuantity = (int) _numericUpDownQuantity.Value;
 					_strategyState = StrategyState.Exit;
 				}
 				//here we made decativation after our order worked
@@ -406,10 +407,15 @@ namespace NinjaTrader.Strategy
 			}
 			catch (Exception e)
 			{
-				MessageBox.Show(e.Source + e.Data + e.StackTrace);
+				if(firstException)
+				{
+					firstException = false;
+					MessageBox.Show("Hello it is massage from Yura sand the screen with those code to Yura to be fixed:"+e.Source + e.Data + e.StackTrace);
+				}
 			}
 		}
 
+		private bool firstException = true;
 		private void UpdateFeatures()
 		{
 			UpdateRr();
@@ -425,17 +431,34 @@ namespace NinjaTrader.Strategy
 
 		private void UpdateEntryLineTouches()
 		{
-			if (FirstTickOfBar)
+			if(EntryLineTouches>1)
 			{
-				double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
-				double priceLow = Low[1];
-				double priceHigh = High[1];
+				if (FirstTickOfBar)
+				{
+					double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
+					double priceLow = Low[1];
+					double priceHigh = High[1];
 
-				if (_currentRayContainer.PositionType == MarketPosition.Long && priceLow < entryLinePrice)
-					EntryLineNumeriUpdate();
-				else if (_currentRayContainer.PositionType == MarketPosition.Short && priceHigh > entryLinePrice)
-					EntryLineNumeriUpdate();
+					if (_currentRayContainer.PositionType == MarketPosition.Long && priceLow < entryLinePrice)
+						EntryLineNumeriUpdate();
+					else if (_currentRayContainer.PositionType == MarketPosition.Short && priceHigh > entryLinePrice)
+						EntryLineNumeriUpdate();
+				}
+				
 			}
+			else
+			{
+
+					double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
+					double priceLow = Low[0];
+					double priceHigh = High[0];
+
+					if (_currentRayContainer.PositionType == MarketPosition.Long && priceLow < entryLinePrice)
+						EntryLineNumeriUpdate();
+					else if (_currentRayContainer.PositionType == MarketPosition.Short && priceHigh > entryLinePrice)
+						EntryLineNumeriUpdate();
+			}
+
 		}
 
 		private void EntryLineNumeriUpdate()
@@ -1380,8 +1403,8 @@ namespace NinjaTrader.Strategy
 			{
 				if (_strategyState == StrategyState.NotActive || _numericUpDownBarEntry.Value == 0)
 				{
-					MessageBox.Show("You are got Bar to Entry Zero or You are not active yet");
 					_checkBoxEnableBarEntry.Checked = false;
+					MessageBox.Show("You are got Bar to Entry Zero or You are not active yet");
 					return;
 
 				}
@@ -1512,28 +1535,16 @@ namespace NinjaTrader.Strategy
 				//Now Adding formated text
 
 				textResult.AppendFormat("<pre>Action:		{0}</pre>", action);
+
 				textResult.AppendFormat("<pre>Time:		{0}</pre>", time);
 
 				textResult.AppendFormat("<pre>Symbol:		{0}</pre>", symbol);
 
-				if (isPartialProfit || _wasPrtialProfit)
-					textResult.AppendFormat("<pre>Quantity:	{0}</pre>", (int)_numericUpDownQuantity.Value / 2);
-				else
-					textResult.AppendFormat("<pre>Quantity:	{0}</pre>", _numericUpDownQuantity.Value);
-
 				textResult.AppendFormat("<pre>Position:	{0}</pre>", _currentRayContainer.PositionType);
 
-				if (!_checkBoxOtherCurrency.Checked)
-				{
-					if (!isEntry && !isPartialProfit && !_wasPrtialProfit)
-						textResult.AppendFormat("<pre>Profit:		{0}USD & {1}%</pre>", _profitLoss, _profitPercent * 100);
-					else if (isPartialProfit)
-						textResult.AppendFormat("<p>Profit:		{0}USD  & {1}%</p>", _profitLoss * 0.5, _profitPercent * 50);
-					else if (_wasPrtialProfit)
-						textResult.AppendFormat("<p>Profit:		{0}USD  & {1}%</p>", _profitLoss, _profitPercent * 50);
-				}
-				else
-					textResult.AppendFormat("<pre>Profit:		{0}USD & {1}%</pre>", _ohterProfitLoss, _otherProfitPercent * 100);
+				if (!isEntry)
+					textResult = AddToTextQunaityAndProfit(isPartialProfit, textResult);
+
 				return textResult.ToString();
 			}
 			catch (Exception e)
@@ -1542,6 +1553,53 @@ namespace NinjaTrader.Strategy
 			}
 			return "some problem with this e-mail text";
 
+		}
+
+		private int lastQuantity = 0;
+		private StringBuilder AddToTextQunaityAndProfit( bool isPartialProfit, StringBuilder textResult)
+		{
+			int quantity = 0;
+			if (isPartialProfit)
+			{
+				quantity =_realQuantity/2;
+				lastQuantity = quantity;
+			}
+			else if (_wasPrtialProfit)
+				quantity = _realQuantity - lastQuantity;
+			else
+				quantity =  _realQuantity;
+
+			textResult.AppendFormat("<pre>Quantity:	{0}</pre>", quantity);
+
+
+			double profitCurrancy = 0;
+			double profitProcents = 0;
+			if (!_checkBoxOtherCurrency.Checked)
+			{
+				if (!isPartialProfit && !_wasPrtialProfit)
+				{
+					profitCurrancy = _profitLoss;
+					profitProcents = _profitPercent*100;
+				}
+				else if (isPartialProfit)
+				{
+					double value = (double)quantity/_realQuantity;
+					profitCurrancy = _profitLoss*value;
+					profitProcents = _profitPercent *value*100;
+				}
+				else if (_wasPrtialProfit)
+				{
+					profitCurrancy = _profitLoss;
+					profitProcents = _profitPercent*50;
+				}
+			}
+			else
+			{
+				profitCurrancy = _ohterProfitLoss;
+				profitProcents = _otherProfitPercent*100;
+			}
+			textResult.AppendFormat("<pre>Profit:		{0}USD & {1}%</pre>", profitCurrancy,Math.Round(profitProcents,3));
+			return textResult;
 		}
 
 		public Bitmap GetChartPicture()
@@ -1619,4 +1677,4 @@ namespace NinjaTrader.Strategy
 	}
 
 	//Let's take a look how it works
-}
+} 
