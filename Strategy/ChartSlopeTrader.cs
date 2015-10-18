@@ -72,12 +72,12 @@ namespace NinjaTrader.Strategy
 
 		#region Mail Settings
 
-//		private string _mailAddress = "daniel@danielwardzynski.com";
-//		private string _eMailLogin = "chartslopetrader";
-//		private string _eMailPassword = "123qwe456rty";
-		private string _mailAddress = "comman.games@outlook.com";
-		private string _eMailLogin = "alfaa.gen";
-		private string _eMailPassword = "Train@concentration";
+		private string _mailAddress = "daniel@danielwardzynski.com";
+		private string _eMailLogin = "chartslopetrader";
+		private string _eMailPassword = "123qwe456rty";
+//		private string _mailAddress = "comman.games@outlook.com";
+//		private string _eMailLogin = "alfaa.gen";
+//		private string _eMailPassword = "Train@concentration";
 
 		#endregion
 
@@ -98,7 +98,7 @@ namespace NinjaTrader.Strategy
 		{
 			get
 			{
-				if (_numericUpDownSwingIndicatorBars != null) return (int) _numericUpDownSwingIndicatorBars.Value;
+				if (_numericUpDownSwingIndicatorBars != null) return (int)_numericUpDownSwingIndicatorBars.Value;
 				return 1;
 			}
 		}
@@ -107,7 +107,7 @@ namespace NinjaTrader.Strategy
 		{
 			get
 			{
-				if (_numericUpDownStopLevelTicks != null) return (double) _numericUpDownStopLevelTicks.Value*TickSize;
+				if (_numericUpDownStopLevelTicks != null) return (double)_numericUpDownStopLevelTicks.Value * TickSize;
 				return 0;
 			}
 		}
@@ -116,7 +116,7 @@ namespace NinjaTrader.Strategy
 		{
 			get
 			{
-				if (_numericUpDownHorizontalTicks != null) return (double) _numericUpDownHorizontalTicks.Value*TickSize;
+				if (_numericUpDownHorizontalTicks != null) return (double)_numericUpDownHorizontalTicks.Value * TickSize;
 				return 0;
 			}
 		}
@@ -250,7 +250,7 @@ namespace NinjaTrader.Strategy
 				{
 					if (_checkBoxEnableShortLongAlert.Checked)
 						SendMailEntryLine();
-					_realQuantity = (int) _numericUpDownQuantity.Value;
+					_realQuantity = (int)_numericUpDownQuantity.Value;
 					_strategyState = StrategyState.Exit;
 				}
 				//here we made decativation after our order worked
@@ -407,10 +407,10 @@ namespace NinjaTrader.Strategy
 			}
 			catch (Exception e)
 			{
-				if(firstException)
+				if (firstException)
 				{
 					firstException = false;
-					MessageBox.Show("Hello it is massage from Yura sand the screen with those code to Yura to be fixed:"+e.Source + e.Data + e.StackTrace);
+					MessageBox.Show("Hello it is massage from Yura sand the screen with those code to Yura to be fixed:" + e.Source + e.Data + e.StackTrace);
 				}
 			}
 		}
@@ -431,7 +431,7 @@ namespace NinjaTrader.Strategy
 
 		private void UpdateEntryLineTouches()
 		{
-			if(EntryLineTouches>1)
+			if (EntryLineTouches > 1)
 			{
 				if (FirstTickOfBar)
 				{
@@ -444,19 +444,19 @@ namespace NinjaTrader.Strategy
 					else if (_currentRayContainer.PositionType == MarketPosition.Short && priceHigh > entryLinePrice)
 						EntryLineNumeriUpdate();
 				}
-				
+
 			}
 			else
 			{
 
-					double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
-					double priceLow = Low[0];
-					double priceHigh = High[0];
+				double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
+				double priceLow = Low[0];
+				double priceHigh = High[0];
 
-					if (_currentRayContainer.PositionType == MarketPosition.Long && priceLow < entryLinePrice)
-						EntryLineNumeriUpdate();
-					else if (_currentRayContainer.PositionType == MarketPosition.Short && priceHigh > entryLinePrice)
-						EntryLineNumeriUpdate();
+				if (_currentRayContainer.PositionType == MarketPosition.Long && priceLow < entryLinePrice)
+					EntryLineNumeriUpdate();
+				else if (_currentRayContainer.PositionType == MarketPosition.Short && priceHigh > entryLinePrice)
+					EntryLineNumeriUpdate();
 			}
 
 		}
@@ -1236,10 +1236,17 @@ namespace NinjaTrader.Strategy
 			{
 				if (_checkBoxEnableTrailStop.Checked)
 				{
-					MessageBox.Show("First you should create the Rays to get Dynamic Trailing Stop");
 					_checkBoxEnableTrailStop.Checked = false;
+					MessageBox.Show("First you should create the Rays to get Dynamic Trailing Stop");
 				}
 				return;
+			}
+			if (Low.Count < 17&&_checkBoxEnableTrailStop.Checked)
+			{
+				
+					_checkBoxEnableTrailStop.Checked = false;
+					MessageBox.Show("You have not enough bars for test");
+					return;
 			}
 			if (_checkBoxEnableTrailStop.Checked)
 			{
@@ -1542,8 +1549,7 @@ namespace NinjaTrader.Strategy
 
 				textResult.AppendFormat("<pre>Position:	{0}</pre>", _currentRayContainer.PositionType);
 
-				if (!isEntry)
-					textResult = AddToTextQunaityAndProfit(isPartialProfit, textResult);
+				textResult = AddToTextQunaityAndProfit(isEntry,isPartialProfit, textResult);
 
 				return textResult.ToString();
 			}
@@ -1556,49 +1562,52 @@ namespace NinjaTrader.Strategy
 		}
 
 		private int lastQuantity = 0;
-		private StringBuilder AddToTextQunaityAndProfit( bool isPartialProfit, StringBuilder textResult)
+		private StringBuilder AddToTextQunaityAndProfit(bool isEntry, bool isPartialProfit, StringBuilder textResult)
 		{
 			int quantity = 0;
 			if (isPartialProfit)
 			{
-				quantity =_realQuantity/2;
+				quantity = _realQuantity / 2;
 				lastQuantity = quantity;
 			}
 			else if (_wasPrtialProfit)
 				quantity = _realQuantity - lastQuantity;
 			else
-				quantity =  _realQuantity;
+				quantity = _realQuantity;
 
 			textResult.AppendFormat("<pre>Quantity:	{0}</pre>", quantity);
 
 
 			double profitCurrancy = 0;
 			double profitProcents = 0;
-			if (!_checkBoxOtherCurrency.Checked)
+			if (!isEntry)
 			{
-				if (!isPartialProfit && !_wasPrtialProfit)
+				if (!_checkBoxOtherCurrency.Checked)
 				{
-					profitCurrancy = _profitLoss;
-					profitProcents = _profitPercent*100;
+					if (!isPartialProfit && !_wasPrtialProfit)
+					{
+						profitCurrancy = _profitLoss;
+						profitProcents = _profitPercent*100;
+					}
+					else if (isPartialProfit)
+					{
+						double value = (double) quantity/_realQuantity;
+						profitCurrancy = _profitLoss*value;
+						profitProcents = _profitPercent*value*100;
+					}
+					else if (_wasPrtialProfit)
+					{
+						profitCurrancy = _profitLoss;
+						profitProcents = _profitPercent*50;
+					}
 				}
-				else if (isPartialProfit)
+				else
 				{
-					double value = (double)quantity/_realQuantity;
-					profitCurrancy = _profitLoss*value;
-					profitProcents = _profitPercent *value*100;
+					profitCurrancy = _ohterProfitLoss;
+					profitProcents = _otherProfitPercent*100;
 				}
-				else if (_wasPrtialProfit)
-				{
-					profitCurrancy = _profitLoss;
-					profitProcents = _profitPercent*50;
-				}
+				textResult.AppendFormat("<pre>Profit:		{0}USD & {1}%</pre>", profitCurrancy, Math.Round(profitProcents, 3));
 			}
-			else
-			{
-				profitCurrancy = _ohterProfitLoss;
-				profitProcents = _otherProfitPercent*100;
-			}
-			textResult.AppendFormat("<pre>Profit:		{0}USD & {1}%</pre>", profitCurrancy,Math.Round(profitProcents,3));
 			return textResult;
 		}
 
@@ -1677,4 +1686,4 @@ namespace NinjaTrader.Strategy
 	}
 
 	//Let's take a look how it works
-} 
+}
