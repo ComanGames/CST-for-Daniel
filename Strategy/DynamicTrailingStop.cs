@@ -44,7 +44,7 @@ namespace NinjaTrader.Strategy
 			_lastSlope = new Slope(0, 0);
 
 			//Getting the first slope
-			Slope tempSlope = GetFirstStlope(0, Math.Min(32, strategy.Low.Count - 1));
+			Slope tempSlope = GetFirstStlope(0, Math.Min(126, strategy.Low.Count - 1));
 			if (Math.Abs(tempSlope.Price) < 0.01)
 				return;
 
@@ -250,8 +250,6 @@ namespace NinjaTrader.Strategy
 
 		private void SavingSlopeAndEmail()
 		{
-
-
 			_isWaitSlope = true;
 			_strategy.SendMail_dtsStopLineMoved();
 		}
