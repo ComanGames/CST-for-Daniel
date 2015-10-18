@@ -5,6 +5,7 @@ using System.Globalization;
 using NinjaTrader.Cbi;
 using NinjaTrader.Gui.Chart;
 
+// ReSharper disable once CheckNamespace
 namespace NinjaTrader.Strategy
 {
 	internal class DynamicTrailingStop
@@ -211,11 +212,12 @@ namespace NinjaTrader.Strategy
 			//If we do not wait for new Slow
 			if (_isWaitSlope) //We wait for a slope
 			{
-				Slope tempSlope = GetLastSlope(0, _lastMinimumOrMaximum);
+				Slope tempSlope = GetLastSlope(0, Math.Max(_lastMinimumOrMaximum, _lastSlope.Bar));
 				if (Math.Abs(tempSlope.Price) < 0.01)
 					return;
 
-				if ((PositonType == MarketPosition.Long && tempSlope.Price > _lastSlope.Price) || (PositonType == MarketPosition.Short && tempSlope.Price < _lastSlope.Price))
+				if ((PositonType == MarketPosition.Long && tempSlope.Price > _lastSlope.Price) 
+					|| (PositonType == MarketPosition.Short && tempSlope.Price < _lastSlope.Price))
 				{
 					_currentSlope = tempSlope;
 					UpdateSlopeLine(_currentSlope);
