@@ -439,7 +439,33 @@ namespace NinjaTrader.Strategy
 
 		private void BarEntryNonConsecutive()
 		{
-		//Todo:write here functionallity
+			if (FirstTickOfBar)
+			{
+				double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
+				double priceLow = Low[1];
+				double priceHigh = High[1];
+
+				if (_currentRayContainer.PositionType == MarketPosition.Long)
+				{
+					if (!_isTouching&&priceLow < entryLinePrice)
+						_isTouching = true;
+					else if(priceHigh>entryLinePrice&&_currentPrice>entryLinePrice)
+					{
+						_isTouching = false;
+						EntryLineNumeriUpdate();
+					}
+				}
+				else if (_currentRayContainer.PositionType == MarketPosition.Short)
+				{
+					if (!_isTouching&&priceHigh > entryLinePrice)
+						_isTouching = true;
+					else if(priceLow<entryLinePrice&&_currentPrice<entryLinePrice)
+					{
+						_isTouching = false;
+						EntryLineNumeriUpdate();
+					}
+				}
+			}
 		}
 
 		private void BarEntryConsecutive()
@@ -452,21 +478,17 @@ namespace NinjaTrader.Strategy
 					double priceLow = Low[1];
 					double priceHigh = High[1];
 
-					if (_currentRayContainer.PositionType == MarketPosition.Long && priceLow < entryLinePrice)
-						EntryLineNumeriUpdate();
-					else if (_currentRayContainer.PositionType == MarketPosition.Short && priceHigh > entryLinePrice)
+					if (priceLow < entryLinePrice&&priceHigh>entryLinePrice)
 						EntryLineNumeriUpdate();
 				}
 			}
 			else
 			{
 				double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
-				double priceLow = Low[0];
-				double priceHigh = High[0];
 
-				if (_currentRayContainer.PositionType == MarketPosition.Long && priceLow < entryLinePrice)
+				if (_currentRayContainer.PositionType == MarketPosition.Long &&_currentPrice<=entryLinePrice&&_currentPrice-entryLinePrice>=-1)
 					EntryLineNumeriUpdate();
-				else if (_currentRayContainer.PositionType == MarketPosition.Short && priceHigh > entryLinePrice)
+				else if (_currentRayContainer.PositionType == MarketPosition.Short&&_currentPrice>=entryLinePrice&&_currentPrice-entryLinePrice<=1)
 					EntryLineNumeriUpdate();
 			}
 		}
