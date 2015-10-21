@@ -449,7 +449,7 @@ namespace NinjaTrader.Strategy
 				{
 					if (!_isTouching&&priceLow < entryLinePrice)
 						_isTouching = true;
-					else if(priceHigh>entryLinePrice&&_currentPrice>entryLinePrice)
+					else if(_isTouching&&priceHigh>entryLinePrice&&_currentPrice>entryLinePrice)
 					{
 						_isTouching = false;
 						EntryLineNumeriUpdate();
@@ -459,7 +459,7 @@ namespace NinjaTrader.Strategy
 				{
 					if (!_isTouching&&priceHigh > entryLinePrice)
 						_isTouching = true;
-					else if(priceLow<entryLinePrice&&_currentPrice<entryLinePrice)
+					else if(_isTouching&&priceLow<entryLinePrice&&_currentPrice<entryLinePrice)
 					{
 						_isTouching = false;
 						EntryLineNumeriUpdate();
@@ -1067,6 +1067,7 @@ namespace NinjaTrader.Strategy
 		{
 			EntryLineTouches = (int)_numericUpDownBarEntry.Value;
 			_numericUpDownBarEntry.Enabled = false;
+			_checkBoxEnableConsecutive.Enabled = false;
 		}
 
 		private void SetVisualActive()
@@ -1455,6 +1456,8 @@ namespace NinjaTrader.Strategy
 			else
 			{
 				_numericUpDownBarEntry.Enabled = true;
+				_checkBoxEnableConsecutive.Enabled = true;
+				_currentRayContainer.EntryRay.Locked = false;
 				_isTouching = false;
 			}
 
