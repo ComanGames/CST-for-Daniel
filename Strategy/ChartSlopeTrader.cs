@@ -72,12 +72,12 @@ namespace NinjaTrader.Strategy
 
 		#region Mail Settings
 
-		private string _mailAddress = "daniel@danielwardzynski.com";
-		private string _eMailLogin = "chartslopetrader";
-		private string _eMailPassword = "123qwe456rty";
-//		private string _mailAddress = "comman.games@outlook.com";
-//		private string _eMailLogin = "alfaa.gen";
-//		private string _eMailPassword = "Train@concentration";
+//		private string _mailAddress = "daniel@danielwardzynski.com";
+//		private string _eMailLogin = "chartslopetrader";
+//		private string _eMailPassword = "123qwe456rty";
+		private string _mailAddress = "comman.games@outlook.com";
+		private string _eMailLogin = "alfaa.gen";
+		private string _eMailPassword = "Train@concentration";
 
 		#endregion
 
@@ -165,7 +165,7 @@ namespace NinjaTrader.Strategy
 			{
 				// Initialize Forms			
 				ChartControl.ChartPanel.MouseUp += MouseUpAction;
-				VS2010_InitializeComponent_Form();
+				VS2010_InitializeComponent_Form(ChartControl.Controls);
 
 				// Add Toolbar Button
 				ButtonToThetop();
@@ -248,9 +248,9 @@ namespace NinjaTrader.Strategy
 			{
 				if (_strategyState == StrategyState.Enter && position.MarketPosition != MarketPosition.Flat)
 				{
+					_realQuantity = (int)_numericUpDownQuantity.Value;
 					if (_checkBoxEnableShortLongAlert.Checked)
 						SendMailEntryLine();
-					_realQuantity = (int)_numericUpDownQuantity.Value;
 					_strategyState = StrategyState.Exit;
 				}
 				//here we made decativation after our order worked
@@ -431,6 +431,19 @@ namespace NinjaTrader.Strategy
 
 		private void UpdateEntryLineTouches()
 		{
+			if (_checkBoxEnableConsecutive.Checked)
+				BarEntryConsecutive();
+			else
+				BarEntryNonConsecutive();
+		}
+
+		private void BarEntryNonConsecutive()
+		{
+		//Todo:write here functionallity
+		}
+
+		private void BarEntryConsecutive()
+		{
 			if (EntryLineTouches > 1)
 			{
 				if (FirstTickOfBar)
@@ -444,11 +457,9 @@ namespace NinjaTrader.Strategy
 					else if (_currentRayContainer.PositionType == MarketPosition.Short && priceHigh > entryLinePrice)
 						EntryLineNumeriUpdate();
 				}
-
 			}
 			else
 			{
-
 				double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
 				double priceLow = Low[0];
 				double priceHigh = High[0];
@@ -458,7 +469,6 @@ namespace NinjaTrader.Strategy
 				else if (_currentRayContainer.PositionType == MarketPosition.Short && priceHigh > entryLinePrice)
 					EntryLineNumeriUpdate();
 			}
-
 		}
 
 		private void EntryLineNumeriUpdate()
@@ -626,7 +636,7 @@ namespace NinjaTrader.Strategy
 			double d = (5 * TickSize);
 			if (Position.MarketPosition == MarketPosition.Long)
 				ExitLong(quantity);
-			else if (Position.MarketPosition == MarketPosition.Flat)
+			else if (Position.MarketPosition == MarketPosition.Short)
 				ExitShort(quantity);
 			_closeHalfNow = false;
 		}
@@ -811,7 +821,7 @@ namespace NinjaTrader.Strategy
 
 		private void UpdateForms()
 		{
-			ChartControl.ChartPanel.Invalidate();
+			_mainPanel.Invalidate();
 		}
 
 		#endregion
@@ -848,7 +858,7 @@ namespace NinjaTrader.Strategy
 			_radioButtonPartialProfit.Enabled = false;
 
 			//Full update to see the changes what we made
-			_currentDynamicTrailingStop = new DynamicTrailingStop(this, _currentRayContainer);
+			_currentDynamicTrailingStop = new DynamicTrailingStop(this, _currentRayContainer,_checkBoxEnableTrailStopPreAnalyze.Checked);
 			ChartControl.ChartPanel.Invalidate();
 		}
 
@@ -872,7 +882,7 @@ namespace NinjaTrader.Strategy
 					_checkBoxEnableTrailStop.Checked = false;
 				}
 				else
-					_currentDynamicTrailingStop = new DynamicTrailingStop(this, _currentRayContainer);
+					EnableDts();
 			}
 		}
 
@@ -1089,12 +1099,7 @@ namespace NinjaTrader.Strategy
 				{
 					if (Position.MarketPosition != MarketPosition.Flat)
 					{
-						int quantity = Position.Quantity;
-						double d = (5 * TickSize);
-						if (Position.MarketPosition == MarketPosition.Long)
-							ExitLongLimit(quantity, _currentPrice - d);
-						else if (Position.MarketPosition == MarketPosition.Short)
-							ExitShortLimit(quantity, _currentPrice + d);
+						OtherWayToClosefullPosition();
 					}
 				}
 			}
@@ -1103,6 +1108,16 @@ namespace NinjaTrader.Strategy
 			if (_deActivate) return;
 			//here we set our position as default
 			Deactivate();
+		}
+
+		private void OtherWayToClosefullPosition()
+		{
+			int quantity = Position.Quantity;
+			double d = (5*TickSize);
+			if (Position.MarketPosition == MarketPosition.Long)
+				ExitLongLimit(quantity, _currentPrice - d);
+			else if (Position.MarketPosition == MarketPosition.Short)
+				ExitShortLimit(quantity, _currentPrice + d);
 		}
 
 		private void Deactivate()
@@ -1307,18 +1322,14 @@ namespace NinjaTrader.Strategy
 			_stopToEnterMsgLabel.BackColor = _disabledColor;
 		}
 
-		private void button_ClosePositionClick(object sender, EventArgs e)
+		private void _buttonClosePositionClick(object sender, EventArgs e)
 		{
 			if (Position.MarketPosition == MarketPosition.Flat)
 			{
 				MessageBox.Show("We have nothing to close");
 				return;
 			}
-			if (MarketPosition.Short == Position.MarketPosition)
-				ExitShort();
-
-			if (MarketPosition.Long == Position.MarketPosition)
-				ExitLong();
+			OtherWayToClosefullPosition();
 		}
 
 		private void _checkBoxEnableTrailStopAlert_CheckedChanged(object sender, EventArgs e)
@@ -1398,10 +1409,6 @@ namespace NinjaTrader.Strategy
 		}
 
 
-		private void _buttonInfoClick(object sender, EventArgs eventArgs)
-		{
-			MessageBox.Show("Want working build pay Yura ");
-		}
 
 
 		private void _checkBoxEnableBarEntry_CheckedChanged(object sender, EventArgs e)
@@ -1686,4 +1693,4 @@ namespace NinjaTrader.Strategy
 	}
 
 	//Let's take a look how it works
-}
+} 
