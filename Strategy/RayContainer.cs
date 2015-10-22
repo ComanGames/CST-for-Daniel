@@ -97,7 +97,7 @@ namespace NinjaTrader.Strategy
 
 		public void Update()
 		{
-			double d10 = Distance / 100;
+			double d10 = Distance / 30;
 			//For enter Ray
 			_eDot = _strategy.DrawDot("enterDot", true, 0, RealRayPrice(EntryRay), _dotColor);
 			double s = RealRayPrice(EntryRay);
@@ -121,13 +121,14 @@ namespace NinjaTrader.Strategy
 				_hcDot = _strategy.DrawDot("HCDot", true, 0, priceT, _dotColor);
 
 				_hcText = _strategy.DrawText("HCText", TextForma(priceT), 0, RealRayPrice(HalfCloseRay) + d10, _textColor);
+
 			}
 		}
 
 		private string TextForma(double price)
 		{
 			string priceText =
-				_strategy.Instrument.MasterInstrument.Round2TickSize(price).ToString(CultureInfo.InvariantCulture) + "\n";
+				_strategy.MyInstrument.Round2TickSize(price).ToString(CultureInfo.InvariantCulture) + "\n";
 			return new string(' ', priceText.Length + TextShift) + priceText;
 		}
 

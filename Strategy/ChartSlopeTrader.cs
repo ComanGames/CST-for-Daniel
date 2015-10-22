@@ -107,7 +107,7 @@ namespace NinjaTrader.Strategy
 		{
 			get
 			{
-				if (_numericUpDownStopLevelTicks != null) return (double)_numericUpDownStopLevelTicks.Value * TickSize;
+				if (_numericUpDownStopLevelTicks != null) return (double)_numericUpDownStopLevelTicks.Value * RealTickSize;
 				return 0;
 			}
 		}
@@ -116,7 +116,7 @@ namespace NinjaTrader.Strategy
 		{
 			get
 			{
-				if (_numericUpDownHorizontalTicks != null) return (double)_numericUpDownHorizontalTicks.Value * TickSize;
+				if (_numericUpDownHorizontalTicks != null) return (double)_numericUpDownHorizontalTicks.Value * RealTickSize;
 				return 0;
 			}
 		}
@@ -132,10 +132,15 @@ namespace NinjaTrader.Strategy
 
 			try
 			{
-				BarsRequired = 1;//To test even if we got 1 bar on our chart
-				AddOtherCurrency();
+				BarsRequired = 0;//To test even if we got 1 bar on our chart
+				//Setting not quit when we have some problem
+			RealtimeErrorHandling = RealtimeErrorHandling.TakeNoAction;
+				MyInstrument = Instrument.MasterInstrument;
+
+			  AddOtherCurrency();
 				CalculateOnBarClose = false;
 				Enabled = true;
+				_currentOrder = null;
 			}
 			catch (Exception e)
 			{
@@ -380,7 +385,17 @@ namespace NinjaTrader.Strategy
 			SendMail(topic, formater);
 		}
 
-
+		private bool weGotError = false;
+		protected override void OnOrderUpdate(IOrder order)
+		{
+			if(order.OrderState == OrderState.Rejected && order.Error != ErrorCode.NoError)
+				{ 
+				weGotError = true;
+				_deActivate = true;
+				MessageBox.Show(" From Yura:You put wrong order probably quantity is two big or you place it in the wrong place. Next will be from NT with more Details. Do not wory with strategy all ok but this order can not be accept");
+				return;
+			 }
+		}
 		protected override void OnBarUpdate()
 		{
 			try
@@ -456,9 +471,9 @@ namespace NinjaTrader.Strategy
 			{
 				double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
 
-				if (_currentRayContainer.PositionType == MarketPosition.Long &&_currentPrice<=entryLinePrice&&_currentPrice-entryLinePrice>=-TickSize)
+				if (_currentRayContainer.PositionType == MarketPosition.Long &&_currentPrice<=entryLinePrice&&_currentPrice-entryLinePrice>=-RealTickSize)
 					EntryLineNumeriUpdate();
-				else if (_currentRayContainer.PositionType == MarketPosition.Short&&_currentPrice>=entryLinePrice&&_currentPrice-entryLinePrice<=TickSize)
+				else if (_currentRayContainer.PositionType == MarketPosition.Short&&_currentPrice>=entryLinePrice&&_currentPrice-entryLinePrice<=RealTickSize)
 					EntryLineNumeriUpdate();
 			}
 
@@ -493,9 +508,9 @@ namespace NinjaTrader.Strategy
 						ReSetLineTouches();
 				}
 				double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
-				if (_currentRayContainer.PositionType == MarketPosition.Long &&_currentPrice<=entryLinePrice&&_currentPrice-entryLinePrice>=(-TickSize))
+				if (_currentRayContainer.PositionType == MarketPosition.Long &&_currentPrice<=entryLinePrice&&_currentPrice-entryLinePrice>=(-RealTickSize))
 					EntryLineNumeriUpdate();
-				else if (_currentRayContainer.PositionType == MarketPosition.Short&&_currentPrice>=entryLinePrice&&_currentPrice-entryLinePrice<=TickSize)
+				else if (_currentRayContainer.PositionType == MarketPosition.Short&&_currentPrice>=entryLinePrice&&_currentPrice-entryLinePrice<=RealTickSize)
 					EntryLineNumeriUpdate();
 			}
 
@@ -528,10 +543,10 @@ namespace NinjaTrader.Strategy
 				}
 				catch (Exception e)
 				{
-					ProportionalDistance = 5 * TickSize;
+					ProportionalDistance = 5 * RealTickSize;
 				}
 			else
-				ProportionalDistance = 5 * TickSize;
+				ProportionalDistance = 5 * RealTickSize;
 			return ProportionalDistance;
 		}
 
@@ -564,12 +579,17 @@ namespace NinjaTrader.Strategy
 				_profitLoss = Math.Round(Position.GetProfitLoss(_currentPrice, PerformanceUnit.Currency), 4);
 				_profitPercent = Math.Round(Position.GetProfitLoss(_currentPrice, PerformanceUnit.Percent), 4);
 			}
+			RealTickSize = TickSize;
 			if (FirstTickOfBar)
 			{
 				ProportionalDistance = GetDistance();
 				UpdateGraphics();
+				MyInstrument = Instrument.MasterInstrument;
 			}
 		}
+
+		public double RealTickSize = 0.0001;
+
 
 		private void OtherInstrumentOrders()
 		{
@@ -671,7 +691,7 @@ namespace NinjaTrader.Strategy
 		private void CloseHalfNow()
 		{
 			int quantity = Position.Quantity / 2;
-			double d = (5 * TickSize);
+			double d = (5 * RealTickSize);
 			if (Position.MarketPosition == MarketPosition.Long)
 				ExitLong(quantity);
 			else if (Position.MarketPosition == MarketPosition.Short)
@@ -704,7 +724,7 @@ namespace NinjaTrader.Strategy
 		private void CloseHalfPositionAndRemoveRay()
 		{
 			int quantity = Position.Quantity / 2;
-			double d = (5 * TickSize);
+			double d = (5 * RealTickSize);
 			if (Position.MarketPosition == MarketPosition.Long)
 				ExitLong(quantity);
 			else if (Position.MarketPosition == MarketPosition.Short)
@@ -722,7 +742,7 @@ namespace NinjaTrader.Strategy
 			{
 				if (Position.MarketPosition != MarketPosition.Flat)
 				{
-					double distance = TickSize * (double)_numericUpDownPipTicksToActivate.Value;
+					double distance = RealTickSize * (double)_numericUpDownPipTicksToActivate.Value;
 					if (Position.MarketPosition == MarketPosition.Long)
 					{
 						if (_currentPrice >= RayPrice(_currentRayContainer.EntryRay) + distance)
@@ -739,7 +759,7 @@ namespace NinjaTrader.Strategy
 			{
 				if (Position.MarketPosition != MarketPosition.Flat)
 				{
-					double distance = TickSize * (double)_numericUpDownPipTicksToActivate.Value;
+					double distance = RealTickSize * (double)_numericUpDownPipTicksToActivate.Value;
 					IRay ray = GetHulfRay();
 					if (Position.MarketPosition == MarketPosition.Long)
 					{
@@ -1105,11 +1125,35 @@ namespace NinjaTrader.Strategy
 		private void DeActivation()
 		{
 
+			if (weGotError)
+			{
+				_currentOrder = null;
+				if (Position.MarketPosition != MarketPosition.Flat)
+				{
+					OtherWayToClosefullPosition();
+					return;
+				}
+				Deactivate();
+				CancelAllOrders(true,true);
+				_deActivate = false;
+				weGotError = false;
+				return;
+
+			}
 			if (_checkBoxEnableBarEntry.Checked)
 			{
 				_checkBoxEnableBarEntry.Checked = false;
 				Deactivate();
 			}
+			//Two deactivations if something goes wrong
+			if (_deActivate && _strategyState == StrategyState.Enter && (_currentOrder == null) && Position.MarketPosition == MarketPosition.Flat)
+			{
+				CancelAllOrders(true, false);
+				Deactivate();
+				_deActivate = false;
+				return;
+			}
+
 			if (_checkBoxOtherCurrency.Checked)
 			{
 				if (_strategyState == StrategyState.Exit)
@@ -1157,12 +1201,11 @@ namespace NinjaTrader.Strategy
 
 		private void OtherWayToClosefullPosition()
 		{
-			int quantity = Position.Quantity;
-			double d = (5*TickSize);
+			double d = (5*RealTickSize);
 			if (Position.MarketPosition == MarketPosition.Long)
-				ExitLongLimit(quantity, _currentPrice - d);
+				ExitLongLimit(_currentPrice - d);
 			else if (Position.MarketPosition == MarketPosition.Short)
-				ExitShortLimit(quantity, _currentPrice + d);
+				ExitShortLimit(_currentPrice + d);
 		}
 
 		private void Deactivate()
@@ -1191,12 +1234,12 @@ namespace NinjaTrader.Strategy
 
 		private void _buttonCloseHalfPositionClick(object sender, EventArgs e)
 		{
-			if (Position.MarketPosition == MarketPosition.Flat)
+			if (_strategyState != StrategyState.Exit)
 			{
 				MessageBox.Show("No open position to close half");
 				return;
 			}
-			if (Position.Quantity <= 1)
+			if (_realQuantity <= 1)
 			{
 				MessageBox.Show("We got quantity 1 or less");
 				return;
@@ -1370,12 +1413,12 @@ namespace NinjaTrader.Strategy
 
 		private void _buttonClosePositionClick(object sender, EventArgs e)
 		{
-			if (Position.MarketPosition == MarketPosition.Flat)
+			if (_strategyState != StrategyState.Exit)
 			{
-				MessageBox.Show("We have nothing to close");
+				MessageBox.Show("We are not active so we have nothing to close");
 				return;
 			}
-			OtherWayToClosefullPosition();
+			_deActivate = true;
 		}
 
 		private void _checkBoxEnableTrailStopAlert_CheckedChanged(object sender, EventArgs e)
@@ -1448,8 +1491,8 @@ namespace NinjaTrader.Strategy
 			double rayDistance = RayPriceNotRound(ray) - RayPriceNotRound(_currentRayContainer.StopRay);
 
 
-			_currentRayContainer.StopRay.Anchor1Y += rayDistance + (TickSize * distance);
-			_currentRayContainer.StopRay.Anchor2Y += rayDistance + (TickSize * distance);
+			_currentRayContainer.StopRay.Anchor1Y += rayDistance + (RealTickSize * distance);
+			_currentRayContainer.StopRay.Anchor2Y += rayDistance + (RealTickSize * distance);
 
 			_currentRayContainer.Update();
 		}
@@ -1624,6 +1667,8 @@ namespace NinjaTrader.Strategy
 		}
 
 		private int lastQuantity = 0;
+		public MasterInstrument MyInstrument;
+
 		private StringBuilder AddToTextQunaityAndProfit(bool isEntry, bool isPartialProfit, StringBuilder textResult)
 		{
 			int quantity = 0;
