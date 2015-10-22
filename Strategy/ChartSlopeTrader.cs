@@ -137,7 +137,7 @@ namespace NinjaTrader.Strategy
 			RealtimeErrorHandling = RealtimeErrorHandling.TakeNoAction;
 				MyInstrument = Instrument.MasterInstrument;
 
-			  AddOtherCurrency();
+//			  AddOtherCurrency();
 				CalculateOnBarClose = false;
 				Enabled = true;
 				_currentOrder = null;
@@ -1752,14 +1752,14 @@ namespace NinjaTrader.Strategy
 
 		#region Visible Proportys
 
-		[Description("The other currency that we will use for trading")]
-		[GridCategory("Parameters")]
-		[Gui.Design.DisplayName("Second currency")]
-		public string OtherInstrumentName
-		{
-			get { return _otherInstrumentName; }
-			set { _otherInstrumentName = value; }
-		}
+//		[Description("The other currency that we will use for trading")]
+//		[GridCategory("Parameters")]
+//		[Gui.Design.DisplayName("Second currency")]
+//		public string OtherInstrumentName
+//		{
+//			get { return _otherInstrumentName; }
+//			set { _otherInstrumentName = value; }
+//		}
 
 
 		[Description("The Email Address to what we will be sending the lists")]
