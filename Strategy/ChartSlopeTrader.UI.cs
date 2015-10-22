@@ -30,6 +30,7 @@ namespace NinjaTrader.Strategy
 		private GroupBox _groupBoxTrailStop;
 		private CheckBox _checkBoxEnableTrailStopAlert;
 		private CheckBox _checkBoxEnableTrailStop;
+		private CheckBox _checkBoxEnableTrailStopPreAnalyze;
 		private NumericUpDown _numericUpDownSwingIndicatorBars;
 		private NumericUpDown _numericUpDownStopLevelTicks;
 		private NumericUpDown _numericUpDownHorizontalTicks;
@@ -42,11 +43,12 @@ namespace NinjaTrader.Strategy
 		private NumericUpDown _numericUpDownPipTicksToActivate;
 		private NumericUpDown _numericUpDownPipTicksToActivateDistance;
 		private Button _buttonManualMoveStop;
-		private GroupBox _groupBox1;
+		private GroupBox _groupBoxOnBarEntry;
 		private GroupBox _groupBoxMail;
 		private Label _label4;
 		private NumericUpDown _numericUpDownBarEntry;
 		private CheckBox _checkBoxEnableBarEntry;
+		private CheckBox _checkBoxEnableConsecutive;
 		private CheckBox _checkBoxEnableShortLongAlert;
 		private Label _stopToEnterMsgLabel;
 		private Label _rrLabel;
@@ -62,13 +64,14 @@ namespace NinjaTrader.Strategy
 		private Label _textBoxOtherCurrency;
 		private Button _buttonActivate;
 		private Button _buttonInfo;
-		private AccountInfo _windowAccountInfo;
+		private NinjaTrader.Strategy.AccountInfo _windowAccountInfo;
 		//Colors
 		private readonly Color _deactivateColor = Color.OrangeRed;
 		public readonly Color _activateColor = Color.DarkBlue;
 		private readonly Color _enabledColor = Color.ForestGreen;
 		public readonly Color _disabledColor = Color.LightCoral;
-		private void VS2010_InitializeComponent_Form()
+
+		public void VS2010_InitializeComponent_Form(Control.ControlCollection controlCollection)
 		{
 			#region Creating FormVariables 
 
@@ -94,11 +97,12 @@ namespace NinjaTrader.Strategy
 			_buttonManualShort = new Button();
 			_buttonManualLong = new Button();
 			_mainPanel = new Panel();
-			_groupBox1 = new GroupBox();
+			_groupBoxOnBarEntry = new GroupBox();
 			_groupBoxMail = new GroupBox();
 			_label4 = new Label();
 			_numericUpDownBarEntry = new NumericUpDown();
 			_checkBoxEnableBarEntry = new CheckBox();
+			_checkBoxEnableConsecutive = new CheckBox();
 			_checkBoxEnableShortLongAlert = new CheckBox();
 			_groupBoxTrailStop = new GroupBox();
 			_label9 = new Label();
@@ -108,6 +112,7 @@ namespace NinjaTrader.Strategy
 			_numericUpDownStopLevelTicks = new NumericUpDown();
 			_checkBoxEnableTrailStopAlert = new CheckBox();
 			_checkBoxEnableTrailStop = new CheckBox();
+			_checkBoxEnableTrailStopPreAnalyze= new CheckBox();
 			_numericUpDownHorizontalTicks = new NumericUpDown();
 			_groupBoxStopToEntry = new GroupBox();
 			_labelPipsToActivateText = new Label();
@@ -125,7 +130,7 @@ namespace NinjaTrader.Strategy
 			_groupBoxQuantity.SuspendLayout();
 			((ISupportInitialize)(_numericUpDownQuantity)).BeginInit();
 			_mainPanel.SuspendLayout();
-			_groupBox1.SuspendLayout();
+			_groupBoxOnBarEntry.SuspendLayout();
 			_groupBoxMail.SuspendLayout();
 			((ISupportInitialize)(_numericUpDownBarEntry)).BeginInit();
 			_groupBoxTrailStop.SuspendLayout();
@@ -406,7 +411,7 @@ namespace NinjaTrader.Strategy
 			_buttonClosePosition.TabIndex = 3;
 			_buttonClosePosition.Text = "MANUAL CLOSE 100%";
 			_buttonClosePosition.UseVisualStyleBackColor = false;
-			_buttonClosePosition.Click += button_ClosePositionClick;
+			_buttonClosePosition.Click += _buttonClosePositionClick;
 			// 
 			// button_ManualShort
 			// 
@@ -439,7 +444,7 @@ namespace NinjaTrader.Strategy
 			// MainPanel
 			// 
 			_mainPanel.BackColor = SystemColors.Control;
-			_mainPanel.Controls.Add(_groupBox1);
+			_mainPanel.Controls.Add(_groupBoxOnBarEntry);
 			_mainPanel.Controls.Add(_groupBoxMail);
 			_mainPanel.Controls.Add(_groupBoxStopToEntry);
 			_mainPanel.Controls.Add(_groupBoxTrailStop);
@@ -456,17 +461,18 @@ namespace NinjaTrader.Strategy
 			// 
 			// groupBox1
 			// 
-			_groupBox1.Controls.Add(_label4);
-			_groupBox1.Controls.Add(_numericUpDownBarEntry);
-			_groupBox1.Controls.Add(_checkBoxEnableBarEntry);
-			_groupBox1.Location = new Point(6, 722);
-			_groupBox1.Margin = new Padding(2);
-			_groupBox1.Name = "groupBox1";
-			_groupBox1.Padding = new Padding(2);
-			_groupBox1.Size = new Size(154, 47);
-			_groupBox1.TabIndex = 2;
-			_groupBox1.TabStop = false;
-			_groupBox1.Text = "Bar Entry";
+			_groupBoxOnBarEntry.Controls.Add(_label4);
+			_groupBoxOnBarEntry.Controls.Add(_numericUpDownBarEntry);
+			_groupBoxOnBarEntry.Controls.Add(_checkBoxEnableBarEntry);
+			_groupBoxOnBarEntry.Controls.Add(_checkBoxEnableConsecutive);
+			_groupBoxOnBarEntry.Location = new Point(6, 702);
+			_groupBoxOnBarEntry.Margin = new Padding(2);
+			_groupBoxOnBarEntry.Name = "groupBox1";
+			_groupBoxOnBarEntry.Padding = new Padding(2);
+			_groupBoxOnBarEntry.Size = new Size(154, 67);
+			_groupBoxOnBarEntry.TabIndex = 2;
+			_groupBoxOnBarEntry.TabStop = false;
+			_groupBoxOnBarEntry.Text = "Bar Entry";
 			// 
 			// groupBox0
 			//
@@ -515,6 +521,18 @@ namespace NinjaTrader.Strategy
 			_checkBoxEnableBarEntry.Text = "Enable";
 			_checkBoxEnableBarEntry.UseVisualStyleBackColor = true;
 			_checkBoxEnableBarEntry.CheckedChanged += _checkBoxEnableBarEntry_CheckedChanged;
+			// 
+			// checkBox_EnableConsecutive
+			// 
+			_checkBoxEnableConsecutive.AutoSize = true;
+			_checkBoxEnableConsecutive.Location = new Point(10, 43);
+			_checkBoxEnableConsecutive.Margin = new Padding(2);
+			_checkBoxEnableConsecutive.Name = "checkBox_EnableConsecutive";
+			_checkBoxEnableConsecutive.Size = new Size(59, 17);
+			_checkBoxEnableConsecutive.TabIndex = 5;
+			_checkBoxEnableConsecutive.Text = "Consecutive";
+			_checkBoxEnableConsecutive.UseVisualStyleBackColor = true;
+			_checkBoxEnableConsecutive.CheckedChanged += _checkBoxEnableConsecutive_CheckedChanged;
 			// 			 
 			// checkBox_EnableBarEntry
 			// 
@@ -562,13 +580,14 @@ namespace NinjaTrader.Strategy
 			_groupBoxTrailStop.Controls.Add(_label7);
 			_groupBoxTrailStop.Controls.Add(_numericUpDownSwingIndicatorBars);
 			_groupBoxTrailStop.Controls.Add(_numericUpDownStopLevelTicks);
-			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStop);
 			_groupBoxTrailStop.Controls.Add(_numericUpDownHorizontalTicks);
+			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStop);
+			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStopPreAnalyze);
 			_groupBoxTrailStop.Location = new Point(6, 599);
 			_groupBoxTrailStop.Margin = new Padding(2);
 			_groupBoxTrailStop.Name = "groupBox_TrailStop";
 			_groupBoxTrailStop.Padding = new Padding(2);
-			_groupBoxTrailStop.Size = new Size(154, 123);
+			_groupBoxTrailStop.Size = new Size(154, 103);
 			_groupBoxTrailStop.TabIndex = 7;
 			_groupBoxTrailStop.TabStop = false;
 			_groupBoxTrailStop.Text = "Dynamic Trail Stop";
@@ -577,7 +596,7 @@ namespace NinjaTrader.Strategy
 			// 
 			_label9.AutoSize = true;
 			_label9.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			_label9.Location = new Point(5, 102);
+			_label9.Location = new Point(5, 82);
 			_label9.Margin = new Padding(2, 0, 2, 0);
 			_label9.Name = "label9";
 			_label9.Size = new Size(109, 13);
@@ -589,7 +608,7 @@ namespace NinjaTrader.Strategy
 			// 
 			_label8.AutoSize = true;
 			_label8.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			_label8.Location = new Point(5, 81);
+			_label8.Location = new Point(5, 61);
 			_label8.Margin = new Padding(2, 0, 2, 0);
 			_label8.Name = "label8";
 			_label8.Size = new Size(113, 13);
@@ -601,7 +620,7 @@ namespace NinjaTrader.Strategy
 			// 
 			_label7.AutoSize = true;
 			_label7.Font = new Font("Microsoft Sans Serif", 7.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			_label7.Location = new Point(5, 59);
+			_label7.Location = new Point(5, 39);
 			_label7.Margin = new Padding(2, 0, 2, 0);
 			_label7.Name = "label7";
 			_label7.Size = new Size(109, 13);
@@ -611,49 +630,24 @@ namespace NinjaTrader.Strategy
 			// 
 			// numericUpDown_SwingIndicatorBars
 			// 
-			_numericUpDownSwingIndicatorBars.Location = new Point(118, 57);
+			_numericUpDownSwingIndicatorBars.Location = new Point(118, 37);
 			_numericUpDownSwingIndicatorBars.Margin = new Padding(2);
-			_numericUpDownSwingIndicatorBars.Maximum = new decimal(new[]
-			{
-				99,
-				0,
-				0,
-				0
-			});
+			_numericUpDownSwingIndicatorBars.Maximum = new decimal(new[] { 99, 0, 0, 0 });
 			_numericUpDownSwingIndicatorBars.Name = "numericUpDown_SwingIndicatorBars";
 			_numericUpDownSwingIndicatorBars.Size = new Size(34, 20);
 			_numericUpDownSwingIndicatorBars.TabIndex = 11;
 			_numericUpDownSwingIndicatorBars.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownSwingIndicatorBars.Value = new decimal(new[]
-			{
-				4,
-				0,
-				0,
-				0
-			});
-			// 
+			_numericUpDownSwingIndicatorBars.Value = new decimal(new[] { 4, 0, 0, 0 }); // 
 			// numericUpDown_HorizonCrossTicks
 			// 
-			_numericUpDownStopLevelTicks.Location = new Point(118, 78);
+			_numericUpDownStopLevelTicks.Location = new Point(118, 58);
 			_numericUpDownStopLevelTicks.Margin = new Padding(2);
-			_numericUpDownStopLevelTicks.Maximum = new decimal(new[]
-			{
-				99,
-				0,
-				0,
-				0
-			});
+			_numericUpDownStopLevelTicks.Maximum = new decimal(new[] { 99, 0, 0, 0 });
 			_numericUpDownStopLevelTicks.Name = "numericUpDown_HorizCrossTicks";
 			_numericUpDownStopLevelTicks.Size = new Size(34, 20);
 			_numericUpDownStopLevelTicks.TabIndex = 12;
 			_numericUpDownStopLevelTicks.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownStopLevelTicks.Value = new decimal(new[]
-			{
-				4,
-				0,
-				0,
-				0
-			});
+			_numericUpDownStopLevelTicks.Value = new decimal(new[] { 4, 0, 0, 0 });
 			// 
 			// checkBox_EnableTrailStop
 			// 
@@ -666,6 +660,18 @@ namespace NinjaTrader.Strategy
 			_checkBoxEnableTrailStop.Text = "Enable";
 			_checkBoxEnableTrailStop.UseVisualStyleBackColor = true;
 			_checkBoxEnableTrailStop.CheckedChanged += _checkBoxEnableTrailStopChanged;
+			// 
+			// checkBox_EnableTrailStop
+			// 
+			_checkBoxEnableTrailStopPreAnalyze.AutoSize = true;
+			_checkBoxEnableTrailStopPreAnalyze.Location = new Point(75, 18);
+			_checkBoxEnableTrailStopPreAnalyze.Margin = new Padding(2);
+			_checkBoxEnableTrailStopPreAnalyze.Name = "checkBox_EnableTrailStop";
+			_checkBoxEnableTrailStopPreAnalyze.Size = new Size(59, 17);
+			_checkBoxEnableTrailStopPreAnalyze.TabIndex = 4;
+			_checkBoxEnableTrailStopPreAnalyze.Text = "Pre-Analyze";
+			_checkBoxEnableTrailStopPreAnalyze.UseVisualStyleBackColor = true;
+			_checkBoxEnableTrailStopPreAnalyze.CheckedChanged += _checkBoxEnableTrailStopPreAnalyzeChanged;
 			//
 			// Text Box what present other Currency
 			// 
@@ -678,7 +684,7 @@ namespace NinjaTrader.Strategy
 			// 
 			// numericUpDown_StopLevelTicks
 			// 
-			_numericUpDownHorizontalTicks.Location = new Point(118, 99);
+			_numericUpDownHorizontalTicks.Location = new Point(118, 79);
 			_numericUpDownHorizontalTicks.Margin = new Padding(2);
 			_numericUpDownHorizontalTicks.Maximum = new decimal(new[] { 99, 0, 0, 0 });
 			_numericUpDownHorizontalTicks.Name = "numericUpDown_StopLevelTicks";
@@ -860,8 +866,8 @@ namespace NinjaTrader.Strategy
 			_groupBoxQuantity.ResumeLayout(false);
 			((ISupportInitialize)(_numericUpDownQuantity)).EndInit();
 			_mainPanel.ResumeLayout(false);
-			_groupBox1.ResumeLayout(false);
-			_groupBox1.PerformLayout();
+			_groupBoxOnBarEntry.ResumeLayout(false);
+			_groupBoxOnBarEntry.PerformLayout();
 			((ISupportInitialize)(_numericUpDownBarEntry)).EndInit();
 
 			_groupBoxTrailStop.ResumeLayout(false);
@@ -874,7 +880,15 @@ namespace NinjaTrader.Strategy
 			((ISupportInitialize)(_numericUpDownPipTicksToActivate)).EndInit();
 			_groupBoxMode.ResumeLayout(false);
 			_groupBoxMode.PerformLayout();
-			ChartControl.Controls.Add(_mainPanel);
+			controlCollection.Add(_mainPanel);
+		}
+
+		private void _checkBoxEnableTrailStopPreAnalyzeChanged(object sender, EventArgs e)
+		{
+		}
+
+		private void _checkBoxEnableConsecutive_CheckedChanged(object sender, EventArgs e)
+		{
 		}
 
 		#endregion
@@ -913,5 +927,18 @@ namespace NinjaTrader.Strategy
 
 		}
 
+		private void _buttonInfoClick(object sender, EventArgs eventArgs)
+		{
+			MessageBox.Show("NOthing happens ");
+//			try
+//			{
+//				_windowAccountInfo = new AccountInfo(this);
+//				_windowAccountInfo.Show();
+//			}
+//			catch (Exception e)
+//			{
+//				MessageBox.Show(e.Message+e.StackTrace);
+//			}
+		}
 	}
 }

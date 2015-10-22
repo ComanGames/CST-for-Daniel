@@ -32,27 +32,40 @@ namespace NinjaTrader.Strategy
 		private IDot _dot;
 		private IText _text;
 		private int _lastMinimumOrMaximum;
+		private bool _isFirstSlope ;
+		const int PreAnalyzeValue = 32;
 
-		public DynamicTrailingStop(ChartSlopeTrader strategy, RayContainer rayContainer)
+		public DynamicTrailingStop(ChartSlopeTrader strategy, RayContainer rayContainer,bool isPreAnalyze)
 		{
 			//Setting the variables
 			_strategy = strategy;
 			_rayContainer = rayContainer;
+			_isFirstSlope = true;
 			PositonType = rayContainer.PositionType;
 			_isWaitSlope = true;
 			_lastMinimumOrMaximum = 0;
 			_lastSlope = new Slope(0, 0);
+			NewBar();
+			UpdateFirstBar();
 
-			//Getting the first slope
-			Slope tempSlope = GetFirstStlope(0, Math.Min(126, strategy.Low.Count - 1));
-			if (Math.Abs(tempSlope.Price) < 0.01)
-				return;
+			if (isPreAnalyze)
+			{
+				//Getting the first slope
+				Slope tempSlope = GetFirstStlope(0, Math.Min(PreAnalyzeValue, strategy.Low.Count - 1));
+				if (Math.Abs(tempSlope.Price) < 0.01)
+					return;
 
-			_currentSlope = tempSlope;
-			UpdateSlopeLine(_currentSlope);
-			_isWaitSlope = false;
-			_strategy.SendMail_dtsNewSlopeLineNew(_currentSlope.Price);
+				_currentSlope = tempSlope;
+				UpdateSlopeLine(_currentSlope);
+				_isFirstSlope = false;
+				_isWaitSlope = false;
+				_strategy.SendMail_dtsNewSlopeLineNew(_currentSlope.Price);
+			}
+			else
+			{
+				_isWaitSlope = true;
 
+			}
 		}
 
 		~DynamicTrailingStop()
@@ -76,7 +89,7 @@ namespace NinjaTrader.Strategy
 			_rayContainer.StopRay.Anchor1Y = price;
 			_rayContainer.StopRay.Anchor2Y = price;
 			_rayContainer.StopRay.Anchor1BarsAgo = _currentSlope.Bar;
-			_rayContainer.StopRay.Anchor2BarsAgo = _currentSlope.Bar - 1;
+			_rayContainer.StopRay.Anchor2BarsAgo = _currentSlope.Bar - 3;
 			_rayContainer.StopRay.Locked = true;
 			_strategy.ChartControl.ChartPanel.Invalidate();
 
@@ -91,9 +104,18 @@ namespace NinjaTrader.Strategy
 		public void UpdateSlopeLine(Slope slope)
 		{
 			double price = _strategy.Instrument.MasterInstrument.Round2TickSize(slope.Price);
-			_ray = _strategy.DrawRay("Slope", false, slope.Bar, price, slope.Bar - 1, price, SlopeLineColor, DashStyle.Solid, 2);
+			_ray = _strategy.DrawRay("Slope", false, slope.Bar, price, slope.Bar - 3, price, SlopeLineColor, DashStyle.Solid, 2);
 			_dot = _strategy.DrawDot("slopeDot", false, 0, price, Color.Black);
-			_text = _strategy.DrawText("HCText", TextForma(price), 0, price, Color.Black);
+			_text = _strategy.DrawText("SlopeText", TextForma(price), 0, price, Color.Black);
+			_strategy.ChartControl.ChartPanel.Invalidate();
+		}
+
+		public void UpdateExistingSlopeRay(IRay ray)
+		{
+			
+			double price = _strategy.RayPrice(ray);
+			_dot = _strategy.DrawDot("slopeDot", false, 0, price, Color.Black);
+			_text = _strategy.DrawText("SlopeText", TextForma(price), 0, price, Color.Black);
 			_strategy.ChartControl.ChartPanel.Invalidate();
 		}
 
@@ -205,6 +227,10 @@ namespace NinjaTrader.Strategy
 			_currentSlope.Bar++;
 			_lastSlope.Bar++;
 			_lastMinimumOrMaximum++;
+			if (_ray != null)
+			{
+				UpdateExistingSlopeRay(_ray);
+			}
 		}
 
 		public void UpdateFirstBar()
@@ -216,9 +242,11 @@ namespace NinjaTrader.Strategy
 				if (Math.Abs(tempSlope.Price) < 0.01)
 					return;
 
-				if ((PositonType == MarketPosition.Long && tempSlope.Price > _lastSlope.Price) 
-					|| (PositonType == MarketPosition.Short && tempSlope.Price < _lastSlope.Price))
+				if ((PositonType == MarketPosition.Long && tempSlope.Price > _lastSlope.Price)
+					|| (PositonType == MarketPosition.Short && tempSlope.Price < _lastSlope.Price)
+					||_isFirstSlope)
 				{
+					_isFirstSlope = false;
 					_currentSlope = tempSlope;
 					UpdateSlopeLine(_currentSlope);
 					_isWaitSlope = false;
@@ -234,18 +262,34 @@ namespace NinjaTrader.Strategy
 			{
 				if (PositonType == MarketPosition.Long && currentPrice > _currentSlope.Price + _strategy.SwingHorizontal)
 				{
+					if(currentPrice<_rayContainer.RealRayPrice(_rayContainer.EntryRay))
+					{
+						SetVariablesWithoutStop();
+						return;
+					}
 					_lastSlope = _currentSlope;
 					SetStopRay(LocalMin(0, _currentSlope.Bar, ref _lastMinimumOrMaximum) - _strategy.StopLevel);
 					SavingSlopeAndEmail();
 				}
 				else if (PositonType == MarketPosition.Short && currentPrice < _currentSlope.Price - _strategy.SwingHorizontal)
 				{
+					if(currentPrice>_rayContainer.RealRayPrice(_rayContainer.EntryRay))
+					{
+						SetVariablesWithoutStop();
+						return;
+					}
 					_lastSlope = _currentSlope;
 					SetStopRay(LocalMax(0, _currentSlope.Bar, ref _lastMinimumOrMaximum) + _strategy.StopLevel);
 					SavingSlopeAndEmail();
 				}
 			}
 
+		}
+
+		private void SetVariablesWithoutStop()
+		{
+			_lastSlope = _currentSlope;
+			_isWaitSlope = true;
 		}
 
 		private void SavingSlopeAndEmail()

@@ -32,7 +32,7 @@ namespace NinjaTrader.Strategy
 	[Description("Trade Slope Lines")]
 	public partial class ChartSlopeTrader : Strategy
 	{
-		private enum StrategyState
+		private enum StrategyState:byte
 		{
 			NotActive,  //When we do not activate our lines
 			Enter,      //When we waiting to enter to the market 
@@ -72,12 +72,12 @@ namespace NinjaTrader.Strategy
 
 		#region Mail Settings
 
-//		private string _mailAddress = "daniel@danielwardzynski.com";
-//		private string _eMailLogin = "chartslopetrader";
-//		private string _eMailPassword = "123qwe456rty";
-		private string _mailAddress = "comman.games@outlook.com";
-		private string _eMailLogin = "alfaa.gen";
-		private string _eMailPassword = "Train@concentration";
+		private string _mailAddress = "daniel@danielwardzynski.com";
+		private string _eMailLogin = "chartslopetrader";
+		private string _eMailPassword = "123qwe456rty";
+//		private string _mailAddress = "comman.games@outlook.com";
+//		private string _eMailLogin = "alfaa.gen";
+//		private string _eMailPassword = "Train@concentration";
 
 		#endregion
 
@@ -428,6 +428,7 @@ namespace NinjaTrader.Strategy
 		}
 
 		private bool _isTouching;
+		private int _realBarTocuhCount;
 
 		private void UpdateEntryLineTouches()
 		{
@@ -439,33 +440,28 @@ namespace NinjaTrader.Strategy
 
 		private void BarEntryNonConsecutive()
 		{
-			if (FirstTickOfBar)
+			if (EntryLineTouches > 1)
 			{
-				double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
-				double priceLow = Low[1];
-				double priceHigh = High[1];
+				if (FirstTickOfBar)
+				{
+					double entryLinePrice = RealRayPrice(_currentRayContainer.EntryRay,1);
+					double priceLow = Low[1];
+					double priceHigh = High[1];
 
-				if (_currentRayContainer.PositionType == MarketPosition.Long)
-				{
-					if (!_isTouching&&priceLow < entryLinePrice)
-						_isTouching = true;
-					else if(_isTouching&&priceHigh>entryLinePrice&&_currentPrice>entryLinePrice)
-					{
-						_isTouching = false;
+					if (entryLinePrice > priceLow&&entryLinePrice < priceHigh)
 						EntryLineNumeriUpdate();
-					}
-				}
-				else if (_currentRayContainer.PositionType == MarketPosition.Short)
-				{
-					if (!_isTouching&&priceHigh > entryLinePrice)
-						_isTouching = true;
-					else if(_isTouching&&priceLow<entryLinePrice&&_currentPrice<entryLinePrice)
-					{
-						_isTouching = false;
-						EntryLineNumeriUpdate();
-					}
 				}
 			}
+			else
+			{
+				double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
+
+				if (_currentRayContainer.PositionType == MarketPosition.Long &&_currentPrice<=entryLinePrice&&_currentPrice-entryLinePrice>=-TickSize)
+					EntryLineNumeriUpdate();
+				else if (_currentRayContainer.PositionType == MarketPosition.Short&&_currentPrice>=entryLinePrice&&_currentPrice-entryLinePrice<=TickSize)
+					EntryLineNumeriUpdate();
+			}
+
 		}
 
 		private void BarEntryConsecutive()
@@ -474,23 +470,43 @@ namespace NinjaTrader.Strategy
 			{
 				if (FirstTickOfBar)
 				{
-					double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
+					double entryLinePrice = RealRayPrice(_currentRayContainer.EntryRay,1);
 					double priceLow = Low[1];
 					double priceHigh = High[1];
 
-					if (priceLow < entryLinePrice&&priceHigh>entryLinePrice)
+					if (entryLinePrice >= priceLow && entryLinePrice <= priceHigh)
 						EntryLineNumeriUpdate();
+					else
+						ReSetLineTouches();
 				}
 			}
 			else
 			{
-				double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
 
-				if (_currentRayContainer.PositionType == MarketPosition.Long &&_currentPrice<=entryLinePrice&&_currentPrice-entryLinePrice>=-1)
+				if (FirstTickOfBar)
+				{
+					double entryLinePricePrev = RealRayPrice(_currentRayContainer.EntryRay,1);
+					double priceLow = Low[1];
+					double priceHigh = High[1];
+
+					if (entryLinePricePrev < priceLow || entryLinePricePrev > priceHigh)
+						ReSetLineTouches();
+				}
+				double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
+				if (_currentRayContainer.PositionType == MarketPosition.Long &&_currentPrice<=entryLinePrice&&_currentPrice-entryLinePrice>=(-TickSize))
 					EntryLineNumeriUpdate();
-				else if (_currentRayContainer.PositionType == MarketPosition.Short&&_currentPrice>=entryLinePrice&&_currentPrice-entryLinePrice<=1)
+				else if (_currentRayContainer.PositionType == MarketPosition.Short&&_currentPrice>=entryLinePrice&&_currentPrice-entryLinePrice<=TickSize)
 					EntryLineNumeriUpdate();
 			}
+
+		}
+
+		private void ReSetLineTouches()
+		{
+			EntryLineTouches= _realBarTocuhCount;
+			_numericUpDownBarEntry.Value = EntryLineTouches;
+			_mainPanel.Invalidate();
+			_numericUpDownBarEntry.Update();
 		}
 
 		private void EntryLineNumeriUpdate()
@@ -1047,9 +1063,10 @@ namespace NinjaTrader.Strategy
 				SetVisualActive();
 			}
 			//If we got Enter or Exit We should wait till them will be changes to what we want from them
-			else
+			else 
+			{
 				_deActivate = true;
-
+			}
 		}
 
 		private void SetActiveVariables()
@@ -1065,7 +1082,9 @@ namespace NinjaTrader.Strategy
 
 		private void ActivateBarEntry()
 		{
+			
 			EntryLineTouches = (int)_numericUpDownBarEntry.Value;
+			_realBarTocuhCount = EntryLineTouches;
 			_numericUpDownBarEntry.Enabled = false;
 			_checkBoxEnableConsecutive.Enabled = false;
 		}
@@ -1087,7 +1106,10 @@ namespace NinjaTrader.Strategy
 		{
 
 			if (_checkBoxEnableBarEntry.Checked)
+			{
+				_checkBoxEnableBarEntry.Checked = false;
 				Deactivate();
+			}
 			if (_checkBoxOtherCurrency.Checked)
 			{
 				if (_strategyState == StrategyState.Exit)
@@ -1155,6 +1177,7 @@ namespace NinjaTrader.Strategy
 			if (_currentRayContainer != null && _currentRayContainer.IsAlternativeLine)
 				_currentRayContainer.RemoveAlternativeRay();
 			_checkBoxEnableTrailStop.Checked = false;
+			_checkBoxEnablePartialProfit.Checked = false;
 			_radioButtonNone.Checked = true;
 
 			_buttonActivate.Text = "ACTIVATE";
@@ -1455,12 +1478,17 @@ namespace NinjaTrader.Strategy
 			}
 			else
 			{
-				_numericUpDownBarEntry.Enabled = true;
-				_checkBoxEnableConsecutive.Enabled = true;
-				_currentRayContainer.EntryRay.Locked = false;
-				_isTouching = false;
+				DeActivateBarEntry();
 			}
 
+		}
+
+		private void DeActivateBarEntry()
+		{
+			_numericUpDownBarEntry.Enabled = true;
+			_checkBoxEnableConsecutive.Enabled = true;
+			_isTouching = false;
+			_numericUpDownBarEntry.Value = _realBarTocuhCount;
 		}
 
 		private void _checkBoxOtherCurrencyOnCheckedChanged(object sender, EventArgs eventArgs)
@@ -1468,21 +1496,23 @@ namespace NinjaTrader.Strategy
 			_textBoxOtherCurrency.Enabled = _checkBoxOtherCurrency.Checked;
 		}
 
+		public double RealRayPrice(IRay ray, int ago)
+		{
+			//So how much step per bar we got here
+			double oneBarDistance = (ray.Anchor1Y - ray.Anchor2Y) / (ray.Anchor1BarsAgo - ray.Anchor2BarsAgo);
+
+			//Now how add the count of those steps to over lest price and then return 
+			double rayPrice = (-oneBarDistance * (ray.Anchor2BarsAgo -ago)) + ray.Anchor2Y;
+			return rayPrice;
+		}
 		public double RayPriceNotRound(IRay ray)
 		{
 			//So how much step per bar we got here
-			double oneBarDistance = (ray.Anchor1Y - ray.Anchor2Y) / (ray.Anchor1BarsAgo - ray.Anchor2BarsAgo);
-			//Now how add the count of those steps to over lest price and then return 
-			double rayPrice = (-oneBarDistance * ray.Anchor2BarsAgo) + ray.Anchor2Y;
-			return rayPrice;
+			return RealRayPrice(ray,0);
 		}
 		public double RayPrice(IRay ray)
 		{
-			//So how much step per bar we got here
-			double oneBarDistance = (ray.Anchor1Y - ray.Anchor2Y) / (ray.Anchor1BarsAgo - ray.Anchor2BarsAgo);
-			//Now how add the count of those steps to over lest price and then return 
-			double rayPrice = (-oneBarDistance * ray.Anchor2BarsAgo) + ray.Anchor2Y;
-			return Instrument.MasterInstrument.Round2TickSize(rayPrice);
+			return Instrument.MasterInstrument.Round2TickSize( RayPriceNotRound(ray));
 		}
 
 
