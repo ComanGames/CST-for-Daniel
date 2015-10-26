@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Globalization;
+using System.Windows.Forms;
 using NinjaTrader.Cbi;
 using NinjaTrader.Gui.Chart;
 
@@ -33,9 +34,9 @@ namespace NinjaTrader.Strategy
 		private IText _text;
 		private int _lastMinimumOrMaximum;
 		private bool _isFirstSlope ;
-		const int PreAnalyzeValue = 32;
+		const int PreAnalyzeValue = 64;
 
-		public DynamicTrailingStop(ChartSlopeTrader strategy, RayContainer rayContainer,bool isPreAnalyze)
+		public DynamicTrailingStop(ChartSlopeTrader strategy, RayContainer rayContainer,bool isPreAnalyze, bool isPost)
 		{
 			//Setting the variables
 			_strategy = strategy;
@@ -51,14 +52,27 @@ namespace NinjaTrader.Strategy
 			if (isPreAnalyze)
 			{
 				//Getting the first slope
-				Slope tempSlope = GetFirstStlope(0, Math.Min(PreAnalyzeValue, strategy.Low.Count - 1));
-				if (Math.Abs(tempSlope.Price) < 0.01)
+				Slope tempSlope = GetFirstStlope(0, Math.Min(PreAnalyzeValue, strategy.Low.Count - 1),isPost);
+				if (_strategy.SwingIndicatorBars <= 1)
+				{
+					MessageBox.Show("You can not start pre-analyze with one or less bars");
 					return;
-
+				}
+				if (PositonType == MarketPosition.Long && Math.Abs(tempSlope.Price - strategy.High[1]) < strategy.RealTickSize)
+				{
+					MessageBox.Show("Your swing price want to be set as same as previous bar");
+					return;
+				}
+				if (PositonType == MarketPosition.Short && Math.Abs(tempSlope.Price - strategy.Low[1]) < strategy.RealTickSize)
+				{
+					MessageBox.Show("Your swing price want to be set as same as previous bar");
+					return;
+					
+				}
 				_currentSlope = tempSlope;
 				UpdateSlopeLine(_currentSlope);
 				_isFirstSlope = false;
-				_isWaitSlope = false;
+				_isWaitSlope = true;
 				_strategy.SendMail_dtsNewSlopeLineNew(_currentSlope.Price);
 			}
 			else
@@ -119,10 +133,12 @@ namespace NinjaTrader.Strategy
 			_strategy.ChartControl.ChartPanel.Invalidate();
 		}
 
-		public Slope GetFirstStlope(int from, int till)
+		public Slope GetFirstStlope(int from, int till,bool isPostResult)
 		{
-			return PostResult(till, GetLastSlope(from, till));
-
+			Slope slope =GetLastSlope(from, till);
+			if(isPostResult)
+				slope = PostResult(till, slope);
+			return slope;
 		}
 		public Slope GetLastSlope(int from, int till)
 		{

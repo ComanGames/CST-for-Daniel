@@ -169,6 +169,7 @@ namespace NinjaTrader.Strategy
 			try
 			{
 				// Initialize Forms			
+				ChartControl.Disposed += ChartControlOnDisposed;
 				ChartControl.ChartPanel.MouseUp += MouseUpAction;
 				VS2010_InitializeComponent_Form(ChartControl.Controls);
 
@@ -179,6 +180,12 @@ namespace NinjaTrader.Strategy
 			{
 				MessageBox.Show(e.Message);
 			}
+		}
+
+		private void ChartControlOnDisposed(object sender, EventArgs eventArgs)
+		{
+			OnTermination();
+			this.Disable();
 		}
 
 		private bool IsInstrument()
@@ -316,18 +323,14 @@ namespace NinjaTrader.Strategy
 			}
 		}
 
-		private void SendMail_dtsLineTP()
-		{
-			string positionType = _currentRayContainer.PositionType.ToString();
-			string topic = String.Format("DTS {0} line triggered with TP@{1} ", positionType, _currentPrice);
-			string formater = TextFormater("Cross Below/Above SL/TP line @" + _currentPrice, false, false);
-			SendMail(topic, formater);
-		}
 		private void SendMail_dtsLineSL()
 		{
 			string positionType = _currentRayContainer.PositionType.ToString();
-			string topic = String.Format("DTS {0} moved Slope line to @{1}", positionType, _currentPrice);
-			string formater = TextFormater("Cross Below/Above SL line @" + _currentPrice, false, false);
+			string topic = String.Format("DTS {0} Stope line triggered at @{1}", positionType, _currentPrice);
+			string from = "Above";
+			if (_currentRayContainer.PositionType == MarketPosition.Short)
+				from = "Below";
+			string formater = TextFormater(String.Format("Cross {0} SL line @{1}",from , _currentPrice), false, false);
 			SendMail(topic, formater);
 		}
 		internal void SendMail_dtsStopLineMoved()
@@ -339,7 +342,7 @@ namespace NinjaTrader.Strategy
 				double rayPrice = RayPrice(_currentRayContainer.StopRay);
 
 				string topic = String.Format("DTS {0} Stop line moved to@{1}", positionType, rayPrice);
-				string formater = TextFormater("DTS changed postion of stop Line @" + rayPrice, true, false);
+				string formater = TextFormater("DTS moved STOP Line to @" + rayPrice, true, false);
 				SendMail(topic, formater);
 
 			}
@@ -350,7 +353,7 @@ namespace NinjaTrader.Strategy
 			{
 				string positionType = _currentRayContainer.PositionType.ToString();
 				string topic = String.Format("DTS {0} moved slope line to @{1}", positionType, slopePrice);
-				string formater = TextFormater("DTS moved slope line to @" + slopePrice, true, false);
+				string formater = TextFormater("DTS moved INDICATOR Line to @" + slopePrice, true, false);
 				SendMail(topic, formater);
 			}
 		}
@@ -359,21 +362,33 @@ namespace NinjaTrader.Strategy
 		{
 			string positionType = _currentRayContainer.PositionType.ToString();
 			string topic = String.Format("50% Partial {0} TP line triggered @{1}", positionType, _currentPrice);
-			string formater = TextFormater("Cross Below/Above 50% line @" + _currentPrice, false, true);
+			//Below or above
+			string from = "Below";
+			if (_currentRayContainer.PositionType == MarketPosition.Short)
+				from = "Above";
+			string formater = TextFormater(String.Format("Cross {0} 50% line @{1}", from, _currentPrice), false, true);
 			SendMail(topic, formater);
 		}
 		private void SendMailProfitLine()
 		{
 			string positionType = _currentRayContainer.PositionType.ToString();
 			string topic = String.Format("TP {0} line triggered TP@{1} ", positionType, _currentPrice);
-			string formater = TextFormater("Cross Below/Above TP line @" + _currentPrice, false, false);
+			//Below or above
+			string from = "Below";
+			if (_currentRayContainer.PositionType == MarketPosition.Short)
+				from = "Above";
+			string formater = TextFormater(String.Format("Cross {0} TP line @{1}",from, _currentPrice), false, false);
 			SendMail(topic, formater);
 		}
 		private void SendMailStopLine()
 		{
 			string positionType = _currentRayContainer.PositionType.ToString();
 			string topic = String.Format("SL {0} line triggered SL@{1}", positionType, _currentPrice);
-			string formater = TextFormater("Cross Below/Above SL line @" + _currentPrice, false, false);
+			//Below or above
+			string from = "Above";
+			if (_currentRayContainer.PositionType == MarketPosition.Short)
+				from = "Below";
+			string formater = TextFormater(String.Format("Cross {0} SL line @{1}",from , _currentPrice), false, false);
 			SendMail(topic, formater);
 		}
 
@@ -381,7 +396,11 @@ namespace NinjaTrader.Strategy
 		{
 			string positionType = _currentRayContainer.PositionType.ToString();
 			string topic = String.Format("Entry {0} line triggered @{1}", positionType, _currentPrice);
-			string formater = TextFormater("Cross Below / Above Entry line @" + _currentPrice, true, false);
+			//Below orabove
+			string from = "Above";
+			if (_currentRayContainer.PositionType == MarketPosition.Short)
+				from = "Below";
+			string formater = TextFormater(String.Format("Cross {0} Entry line @{1}",from , _currentPrice), true, false);
 			SendMail(topic, formater);
 		}
 
@@ -471,9 +490,11 @@ namespace NinjaTrader.Strategy
 			{
 				double entryLinePrice = RayPrice(_currentRayContainer.EntryRay);
 
-				if (_currentRayContainer.PositionType == MarketPosition.Long &&_currentPrice<=entryLinePrice&&_currentPrice-entryLinePrice>=-RealTickSize)
+				if (_currentRayContainer.PositionType == MarketPosition.Long &&_currentPrice<=entryLinePrice
+					&&Math.Abs(_currentPrice-entryLinePrice)<2*RealTickSize)
 					EntryLineNumeriUpdate();
-				else if (_currentRayContainer.PositionType == MarketPosition.Short&&_currentPrice>=entryLinePrice&&_currentPrice-entryLinePrice<=RealTickSize)
+				else if (_currentRayContainer.PositionType == MarketPosition.Short&&_currentPrice>=entryLinePrice
+					&&Math.Abs(_currentPrice-entryLinePrice)<2*RealTickSize)
 					EntryLineNumeriUpdate();
 			}
 
@@ -531,7 +552,13 @@ namespace NinjaTrader.Strategy
 			_numericUpDownBarEntry.Update();
 			_mainPanel.Invalidate();
 			if (EntryLineTouches <= 0)
+			{
 				_checkBoxEnableBarEntry.Checked = false;
+				if (_currentRayContainer.PositionType == MarketPosition.Long)
+					EnterLong((int)_numericUpDownQuantity.Value);
+				else if (_currentRayContainer.PositionType == MarketPosition.Short)
+					EnterShort((int)_numericUpDownQuantity.Value);
+			}
 		}
 
 		private double GetDistance()
@@ -916,7 +943,7 @@ namespace NinjaTrader.Strategy
 			_radioButtonPartialProfit.Enabled = false;
 
 			//Full update to see the changes what we made
-			_currentDynamicTrailingStop = new DynamicTrailingStop(this, _currentRayContainer,_checkBoxEnableTrailStopPreAnalyze.Checked);
+			_currentDynamicTrailingStop = new DynamicTrailingStop(this, _currentRayContainer,_checkBoxEnableTrailStopPreAnalyze.Checked,_checkBoxEnableTrailStopPostAnalyze.Checked);
 			ChartControl.ChartPanel.Invalidate();
 		}
 
@@ -1345,12 +1372,11 @@ namespace NinjaTrader.Strategy
 				}
 				return;
 			}
-			if (Low.Count < 17&&_checkBoxEnableTrailStop.Checked)
+			if (_checkBoxEnableTrailStop.Checked&&_numericUpDownSwingIndicatorBars.Value<=1)
 			{
-				
-					_checkBoxEnableTrailStop.Checked = false;
-					MessageBox.Show("You have not enough bars for test");
-					return;
+				MessageBox.Show("You can not acitvate DTS with Swing Indicator 1 or less only when swing indicator>1");
+				_checkBoxEnableTrailStop.Checked = false;
+				return;
 			}
 			if (_checkBoxEnableTrailStop.Checked)
 			{
@@ -1511,6 +1537,13 @@ namespace NinjaTrader.Strategy
 					return;
 
 				}
+				if (_strategyState == StrategyState.Exit )
+				{
+					_checkBoxEnableBarEntry.Checked = false;
+					MessageBox.Show("You can not activate bar entry when you are already in position");
+					return;
+
+				}
 				if (_strategyState == StrategyState.Enter)
 				{
 					CancelAllOrders(true, false);
@@ -1631,7 +1664,8 @@ namespace NinjaTrader.Strategy
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show("We can't send e-mail" + ex.StackTrace);
+				MessageBox.Show("Some problems with your Internet\n E-Mail:" + SendingTopic + "\nWas not sanded");
+
 				Thread.CurrentThread.Abort();
 			}
 		}
@@ -1791,6 +1825,5 @@ namespace NinjaTrader.Strategy
 
 		#endregion
 	}
-
 	//Let's take a look how it works
 } 

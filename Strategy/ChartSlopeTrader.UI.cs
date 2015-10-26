@@ -31,6 +31,7 @@ namespace NinjaTrader.Strategy
 		private CheckBox _checkBoxEnableTrailStopAlert;
 		private CheckBox _checkBoxEnableTrailStop;
 		private CheckBox _checkBoxEnableTrailStopPreAnalyze;
+		private CheckBox _checkBoxEnableTrailStopPostAnalyze;
 		private NumericUpDown _numericUpDownSwingIndicatorBars;
 		private NumericUpDown _numericUpDownStopLevelTicks;
 		private NumericUpDown _numericUpDownHorizontalTicks;
@@ -113,6 +114,7 @@ namespace NinjaTrader.Strategy
 			_checkBoxEnableTrailStopAlert = new CheckBox();
 			_checkBoxEnableTrailStop = new CheckBox();
 			_checkBoxEnableTrailStopPreAnalyze= new CheckBox();
+			_checkBoxEnableTrailStopPostAnalyze= new CheckBox();
 			_numericUpDownHorizontalTicks = new NumericUpDown();
 			_groupBoxStopToEntry = new GroupBox();
 			_labelPipsToActivateText = new Label();
@@ -190,6 +192,7 @@ namespace NinjaTrader.Strategy
 			_buttonInfo.Text = "INFO Window";
 			_buttonInfo.UseVisualStyleBackColor = false;
 			_buttonInfo.Click += _buttonInfoClick;
+			_buttonInfo.Enabled = false;
 
 			#endregion
 
@@ -583,6 +586,7 @@ namespace NinjaTrader.Strategy
 			_groupBoxTrailStop.Controls.Add(_numericUpDownHorizontalTicks);
 			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStop);
 			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStopPreAnalyze);
+			_groupBoxTrailStop.Controls.Add(_checkBoxEnableTrailStopPostAnalyze);
 			_groupBoxTrailStop.Location = new Point(6, 599);
 			_groupBoxTrailStop.Margin = new Padding(2);
 			_groupBoxTrailStop.Name = "groupBox_TrailStop";
@@ -655,7 +659,7 @@ namespace NinjaTrader.Strategy
 			_checkBoxEnableTrailStop.Location = new Point(9, 18);
 			_checkBoxEnableTrailStop.Margin = new Padding(2);
 			_checkBoxEnableTrailStop.Name = "checkBox_EnableTrailStop";
-			_checkBoxEnableTrailStop.Size = new Size(59, 17);
+			_checkBoxEnableTrailStop.Size = new Size(30, 17);
 			_checkBoxEnableTrailStop.TabIndex = 4;
 			_checkBoxEnableTrailStop.Text = "Enable";
 			_checkBoxEnableTrailStop.UseVisualStyleBackColor = true;
@@ -664,14 +668,26 @@ namespace NinjaTrader.Strategy
 			// checkBox_EnableTrailStop
 			// 
 			_checkBoxEnableTrailStopPreAnalyze.AutoSize = true;
-			_checkBoxEnableTrailStopPreAnalyze.Location = new Point(75, 18);
+			_checkBoxEnableTrailStopPreAnalyze.Location = new Point(68, 18);
 			_checkBoxEnableTrailStopPreAnalyze.Margin = new Padding(2);
 			_checkBoxEnableTrailStopPreAnalyze.Name = "checkBox_EnableTrailStop";
-			_checkBoxEnableTrailStopPreAnalyze.Size = new Size(59, 17);
+			_checkBoxEnableTrailStopPreAnalyze.Size = new Size(20, 17);
 			_checkBoxEnableTrailStopPreAnalyze.TabIndex = 4;
-			_checkBoxEnableTrailStopPreAnalyze.Text = "Pre-Analyze";
+			_checkBoxEnableTrailStopPreAnalyze.Text = "Pre";
 			_checkBoxEnableTrailStopPreAnalyze.UseVisualStyleBackColor = true;
 			_checkBoxEnableTrailStopPreAnalyze.CheckedChanged += _checkBoxEnableTrailStopPreAnalyzeChanged;
+			// 
+			// checkBox_EnableTrailStop
+			// 
+			_checkBoxEnableTrailStopPostAnalyze.AutoSize = true;
+			_checkBoxEnableTrailStopPostAnalyze.Location = new Point(110, 18);
+			_checkBoxEnableTrailStopPostAnalyze.Margin = new Padding(2);
+			_checkBoxEnableTrailStopPostAnalyze.Name = "checkBox_EnableTrailStop";
+			_checkBoxEnableTrailStopPostAnalyze.Size = new Size(30, 17);
+			_checkBoxEnableTrailStopPostAnalyze.TabIndex = 4;
+			_checkBoxEnableTrailStopPostAnalyze.Text = "Post";
+			_checkBoxEnableTrailStopPostAnalyze.UseVisualStyleBackColor = true;
+			_checkBoxEnableTrailStopPostAnalyze.Enabled = false;
 			//
 			// Text Box what present other Currency
 			// 
