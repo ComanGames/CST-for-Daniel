@@ -193,7 +193,6 @@ namespace NinjaTrader.Strategy
 			_buttonInfo.UseVisualStyleBackColor = false;
 			_buttonInfo.Click += _buttonInfoClick;
 			_buttonInfo.Enabled = false;
-
 			#endregion
 
 			// 
@@ -389,6 +388,7 @@ namespace NinjaTrader.Strategy
 			_buttonUpdateQuantity.TabIndex = 1;
 			_buttonUpdateQuantity.Text = "Update";
 			_buttonUpdateQuantity.UseVisualStyleBackColor = false;
+			_buttonUpdateQuantity.Click += _buttonUpdateQuantity_Click;
 			// 
 			// numericUpDown_Quantity
 			// 
@@ -897,6 +897,16 @@ namespace NinjaTrader.Strategy
 			_groupBoxMode.ResumeLayout(false);
 			_groupBoxMode.PerformLayout();
 			controlCollection.Add(_mainPanel);
+		}
+
+		private void _buttonUpdateQuantity_Click(object sender, EventArgs e)
+		{
+			if (_strategyState == StrategyState.NotActive || _strategyState == StrategyState.Exit)
+			{
+				MessageBox.Show("You are in position or you are not active yet");
+				return;
+			}
+			enterQunatity = (int) _numericUpDownQuantity.Value;
 		}
 
 		private void _checkBoxEnableTrailStopPreAnalyzeChanged(object sender, EventArgs e)

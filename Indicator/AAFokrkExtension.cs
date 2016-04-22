@@ -5,7 +5,6 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Reflection;
-using System.Threading;
 using System.Windows.Forms;
 using System.Xml.Serialization;
 using NinjaTrader.Data;
@@ -32,12 +31,12 @@ namespace NinjaTrader.Indicator
 		//Variable to get with what fork we are working with
 	    private IAndrewsPitchfork _lestSelectedFork;
 	    private IRay _oveRay;
-	    private const string myTag = "AAForkExtension";
+	    private const string MyTag = "AAForkExtension";
 		// To get the point position 
-		private double priceMin;
-		private double priceMax;
-		private int boundsTop;
-		private int boundsHeight;
+		private double _priceMin;
+		private double _priceMax;
+		private int _boundsTop;
+		private int _boundsHeight;
 	    private double _positionPrice;
 	    private DateTime _positionTime;
 	    private LinkedList<IAndrewsPitchfork> _forkList = new LinkedList<IAndrewsPitchfork>();
@@ -99,10 +98,10 @@ namespace NinjaTrader.Indicator
 				switch (_state)
 				{
 					case ForkState.Second:
-						if (ForkRay == null)
+						if (_forkRay == null)
 							return;
-						ForkRay.EndTime = _positionTime;
-						ForkRay.EndY = _positionPrice;
+						_forkRay.EndTime = _positionTime;
+						_forkRay.EndY = _positionPrice;
 						break;
 					case ForkState.Thired:
 						IAndrewsPitchfork frork = _forkList.Last.Value;
@@ -127,13 +126,9 @@ namespace NinjaTrader.Indicator
 	    /// This Method we call every time we click
 	    /// over mouse some where on the chart
 	    /// </summary>
-	    /// <param name="sender"></param>
-	    /// <param name="e"></param>
-	    private int _newForkClick = 0;
+	    public bool DrawingFork;
 
-	    private bool DrawingFork;
-
-	    private ILine ForkRay;
+	    private ILine _forkRay;
 
 
 	    protected override void OnMarketData(MarketDataEventArgs e)
@@ -156,10 +151,10 @@ namespace NinjaTrader.Indicator
 			UpdateChart();
 			//Just saving variables to get them after when 
 			//We will count the postion of over mouse on over Chart
-		    priceMin = min;
-		    priceMax = max;
-		    boundsTop = bounds.Top;
-		    boundsHeight = bounds.Height;
+		    _priceMin = min;
+		    _priceMax = max;
+		    _boundsTop = bounds.Top;
+		    _boundsHeight = bounds.Height;
 			//Calling base to do not miss something
 		    base.Plot(graphics, bounds, min, max);
 	    }
@@ -181,16 +176,16 @@ namespace NinjaTrader.Indicator
 		    {
 			    case ForkState.First:
 				    //Drawing the starting ray
-				    ForkRay = DrawLine("RayLine", false, _positionTime, _positionPrice, _positionTime, _positionPrice, Color.Black, DashStyle.DashDot, 1);
+				    _forkRay = DrawLine("RayLine", false, _positionTime, _positionPrice, _positionTime, _positionPrice, Color.Black, DashStyle.DashDot, 1);
 				    _state = ForkState.Second;
 				    break;
 
 			    case ForkState.Second:
 				    IAndrewsPitchfork fork = DrawAndrewsPitchfork("currentFork" + _forkList.Count.ToString(), false,
-					    ForkRay.StartTime, ForkRay.StartY, ForkRay.EndTime, ForkRay.EndY, _positionTime, _positionPrice,
+					    _forkRay.StartTime, _forkRay.StartY, _forkRay.EndTime, _forkRay.EndY, _positionTime, _positionPrice,
 					    Color.FromKnownColor(KnownColor.Blue), DashStyle.Custom, 1);
 				    _forkList.AddLast(fork);
-				    RemoveDrawObject(ForkRay);
+				    RemoveDrawObject(_forkRay);
 				    _state = ForkState.Thired;
 				    break;
 			    case ForkState.Thired:
@@ -208,7 +203,7 @@ namespace NinjaTrader.Indicator
 			    return;
 
 		    //Frist we get hard countation of counting over mouse position in over limits
-		    _positionPrice = priceMax - (e.Y - boundsTop)*(priceMax - priceMin)/boundsHeight;
+		    _positionPrice = _priceMax - (e.Y - _boundsTop)*(_priceMax - _priceMin)/_boundsHeight;
 		    //And we got converatation from the real postion to the cart possiton 
 		    _positionPrice = Instrument.MasterInstrument.Round2TickSize(_positionPrice);
 
@@ -217,7 +212,7 @@ namespace NinjaTrader.Indicator
 		    //Now we gettting method from him using net reflecton
 		    MethodInfo mi = type.GetMethod("GetTimeByX", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
 		    //And nwo finaly we get the position by reflection call the hidden method 
-		    _positionTime = (DateTime) mi.Invoke(this.ChartControl, new object[] {e.X});
+		    _positionTime = (DateTime) mi.Invoke(ChartControl, new object[] {e.X});
 	    }
 
 	    #endregion
@@ -325,7 +320,6 @@ namespace NinjaTrader.Indicator
 		    {
 			    //And here wer create over for 
 			    andrewForkItem.PerformClick();
-			    return;
 		    }
 	    }
 
@@ -346,10 +340,10 @@ namespace NinjaTrader.Indicator
 		    if (fi != null)
 		    {
 				//if we free from null error
-			    if (base.ChartControl != null && fi.GetValue(base.ChartControl) != null)
+			    if (ChartControl != null && fi.GetValue(ChartControl) != null)
 			    {
 					//Gettin the instance of the object
-				    object clickedObject = fi.GetValue(base.ChartControl);
+				    object clickedObject = fi.GetValue(ChartControl);
 					//Checking if ti posible to convert
 				    if (clickedObject is IAndrewsPitchfork)
 				    {
@@ -359,7 +353,7 @@ namespace NinjaTrader.Indicator
 					    if (result!=null)
 					    {
 							//Now we stay real one for moving
-						    if (result.Tag != myTag)
+						    if (result.Tag != MyTag)
 							    result = MadeEvilClone(result);
 					    }
 				    }
@@ -396,7 +390,7 @@ namespace NinjaTrader.Indicator
 			ClearOverChart();
 
 			//Creating the copy absolutly the same as original was but now we got control on it
-			IAndrewsPitchfork newFork = DrawAndrewsPitchfork(myTag, true, fAnchor1Time, fAnchor1Y, fAnchor3Time, fAnchor3Y, fAnchor2Time, fAnchor2Y,
+			IAndrewsPitchfork newFork = DrawAndrewsPitchfork(MyTag, true, fAnchor1Time, fAnchor1Y, fAnchor3Time, fAnchor3Y, fAnchor2Time, fAnchor2Y,
 			 //Settin the collor what we like
 			 Color.FromKnownColor(KnownColor.Blue),
 			 //Dash Stile and width
@@ -422,8 +416,8 @@ namespace NinjaTrader.Indicator
 			//Removing lest selected fork to do not create the bugs
 		    _lestSelectedFork = null;
 			BindingFlags bfObject = BindingFlags.Instance | BindingFlags.NonPublic;
-			MethodInfo methodNT = typeof(ChartControl).GetMethod("RemoveDrawingObjectsAfterBar", bfObject);
-			methodNT.Invoke(this.ChartControl, new Object[] { 0 });
+			MethodInfo methodNt = typeof(ChartControl).GetMethod("RemoveDrawingObjectsAfterBar", bfObject);
+			methodNt.Invoke(ChartControl, new Object[] { 0 });
 		}
 
 	    private void GetRay()
@@ -460,12 +454,12 @@ namespace NinjaTrader.Indicator
 						break;
 			    }
 				//Getting diffrence between first and second position
-			    double _secondPositionY = anchor2Y - anchor1Y;
-			    TimeSpan _secondPositionX = anchor2Time.Subtract(anchor1Time);
+			    double secondPositionY = anchor2Y - anchor1Y;
+			    TimeSpan secondPositionX = anchor2Time.Subtract(anchor1Time);
 
 				//Drawing over ray
-			    _oveRay = DrawRay("Ray", true, _positionTime, _positionPrice, _positionTime.Add(_secondPositionX),
-				    _positionPrice + _secondPositionY, Color.Red, DashStyle.Solid, 2);
+			    _oveRay = DrawRay("Ray", true, _positionTime, _positionPrice, _positionTime.Add(secondPositionX),
+				    _positionPrice + secondPositionY, Color.Red, DashStyle.Solid, 2);
 
 				//Making it drawable
 			    _oveRay.Locked = false;
@@ -518,7 +512,7 @@ namespace NinjaTrader.Indicator
 		    if (fork!=null)
 		    {
 				//Making the new fork on the position of the old the only way to change the color
-				IAndrewsPitchfork newFork =  DrawAndrewsPitchfork(myTag,true,fork.Anchor1Time,fork.Anchor1Y,fork.Anchor3Time,fork.Anchor3Y,fork.Anchor2Time,fork.Anchor2Y,
+				IAndrewsPitchfork newFork =  DrawAndrewsPitchfork(MyTag,true,fork.Anchor1Time,fork.Anchor1Y,fork.Anchor3Time,fork.Anchor3Y,fork.Anchor2Time,fork.Anchor2Y,
 				//Settin the collor what we like
 				Color.FromKnownColor(KnownColor.Blue),
 				//Dash Stile and width
@@ -542,7 +536,7 @@ namespace NinjaTrader.Indicator
 			if (fork!=null)
 		    {
 				//Making the new fork on the position of the old the only way to change the color
-				IAndrewsPitchfork newFork =  DrawAndrewsPitchfork(myTag,true,fork.Anchor1Time,fork.Anchor1Y,fork.Anchor3Time,fork.Anchor3Y,fork.Anchor2Time,fork.Anchor2Y,
+				IAndrewsPitchfork newFork =  DrawAndrewsPitchfork(MyTag,true,fork.Anchor1Time,fork.Anchor1Y,fork.Anchor3Time,fork.Anchor3Y,fork.Anchor2Time,fork.Anchor2Y,
 				//Settin the collor what we like
 				Color.FromKnownColor(KnownColor.LightSkyBlue),
 				//Dash Stile and width
@@ -567,7 +561,7 @@ namespace NinjaTrader.Indicator
 			if (fork!=null)
 		    {
 				//Making the new fork on the position of the old the only way to change the color
-				IAndrewsPitchfork newFork =  DrawAndrewsPitchfork(myTag,true,fork.Anchor1Time,fork.Anchor1Y,fork.Anchor3Time,fork.Anchor3Y,fork.Anchor2Time,fork.Anchor2Y,
+				IAndrewsPitchfork newFork =  DrawAndrewsPitchfork(MyTag,true,fork.Anchor1Time,fork.Anchor1Y,fork.Anchor3Time,fork.Anchor3Y,fork.Anchor2Time,fork.Anchor2Y,
 				//Settin the collor what we like
 				Color.FromKnownColor(KnownColor.DeepPink),
 				//Dash Stile and width
@@ -603,7 +597,7 @@ namespace NinjaTrader.Indicator
 
         [Browsable(false)]	// this line prevents the data series from being displayed in the indicator properties dialog, do not remove
         [XmlIgnore()]		// this line ensures that the indicator can be saved/recovered as part of a chart template, do not remove
-        public DataSeries Mdified_Schiff
+        public DataSeries MdifiedSchiff
         {
             get { return Values[2]; }
         }
@@ -623,9 +617,9 @@ namespace NinjaTrader.Indicator
 // This namespace holds all indicators and is required. Do not change it.
 namespace NinjaTrader.Indicator
 {
-    public partial class Indicator : IndicatorBase
+    public partial class Indicator
     {
-        private AAForkExtension[] cacheAAForkExtension = null;
+        private AAForkExtension[] _cacheAaForkExtension;
 
         private static AAForkExtension checkAAForkExtension = new AAForkExtension();
 
@@ -644,17 +638,17 @@ namespace NinjaTrader.Indicator
         /// <returns></returns>
         public AAForkExtension AAForkExtension(Data.IDataSeries input)
         {
-            if (cacheAAForkExtension != null)
-                for (int idx = 0; idx < cacheAAForkExtension.Length; idx++)
-                    if (cacheAAForkExtension[idx].EqualsInput(input))
-                        return cacheAAForkExtension[idx];
+            if (_cacheAaForkExtension != null)
+                for (int idx = 0; idx < _cacheAaForkExtension.Length; idx++)
+                    if (_cacheAaForkExtension[idx].EqualsInput(input))
+                        return _cacheAaForkExtension[idx];
 
             lock (checkAAForkExtension)
             {
-                if (cacheAAForkExtension != null)
-                    for (int idx = 0; idx < cacheAAForkExtension.Length; idx++)
-                        if (cacheAAForkExtension[idx].EqualsInput(input))
-                            return cacheAAForkExtension[idx];
+                if (_cacheAaForkExtension != null)
+                    for (int idx = 0; idx < _cacheAaForkExtension.Length; idx++)
+                        if (_cacheAaForkExtension[idx].EqualsInput(input))
+                            return _cacheAaForkExtension[idx];
 
                 AAForkExtension indicator = new AAForkExtension();
                 indicator.BarsRequired = BarsRequired;
@@ -667,11 +661,11 @@ namespace NinjaTrader.Indicator
                 Indicators.Add(indicator);
                 indicator.SetUp();
 
-                AAForkExtension[] tmp = new AAForkExtension[cacheAAForkExtension == null ? 1 : cacheAAForkExtension.Length + 1];
-                if (cacheAAForkExtension != null)
-                    cacheAAForkExtension.CopyTo(tmp, 0);
+                AAForkExtension[] tmp = new AAForkExtension[_cacheAaForkExtension == null ? 1 : _cacheAaForkExtension.Length + 1];
+                if (_cacheAaForkExtension != null)
+                    _cacheAaForkExtension.CopyTo(tmp, 0);
                 tmp[tmp.Length - 1] = indicator;
-                cacheAAForkExtension = tmp;
+                _cacheAaForkExtension = tmp;
                 return indicator;
             }
         }

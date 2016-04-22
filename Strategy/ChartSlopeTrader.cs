@@ -72,13 +72,12 @@ namespace NinjaTrader.Strategy
 
 		#region Mail Settings
 
-		private string _mailAddress = "daniel@danielwardzynski.com";
-		private string _eMailLogin = "chartslopetrader";
-		private string _eMailPassword = "123qwe456rty";
-//		private string _mailAddress = "comman.games@outlook.com";
-//		private string _eMailLogin = "alfaa.gen";
-//		private string _eMailPassword = "Train@concentration";
-
+//		private string _mailAddress = "daniel@danielwardzynski.com";
+//		private string _eMailLogin = "chartslopetrader";
+//		private string _eMailPassword = "123qwe456rty";
+		private string _mailAddress = "comman.games@outlook.com";
+		private string _eMailLogin = "alfaa.gen";
+		private string _eMailPassword = "Train@concentration";
 		#endregion
 
 		#region AuroProportys
@@ -352,7 +351,7 @@ namespace NinjaTrader.Strategy
 			if (_checkBoxEnableTrailStopAlert.Checked)
 			{
 				string positionType = _currentRayContainer.PositionType.ToString();
-				string topic = String.Format("DTS {0} moved slope line to @{1}", positionType, slopePrice);
+				string topic = String.Format("DTS {0} moved yellow line to @{1}", positionType, slopePrice);
 				string formater = TextFormater("DTS moved INDICATOR Line to @" + slopePrice, true, false);
 				SendMail(topic, formater);
 			}
@@ -811,14 +810,14 @@ namespace NinjaTrader.Strategy
 
 		private void CreateLongLimit()
 		{
-			int quantity = (int)_numericUpDownQuantity.Value;
+			int quantity = enterQunatity;
 			double stopPrice = RayPrice(_currentRayContainer.EntryRay);
 			_currentOrder = EnterLongLimit(quantity, stopPrice);
 		}
 
 		private void CreateShortLimit()
 		{
-			int quantity = (int)_numericUpDownQuantity.Value;
+			int quantity = enterQunatity;
 			double stopPrice = RayPrice(_currentRayContainer.EntryRay);
 			_currentOrder = EnterShortLimit(quantity, stopPrice);
 		}
@@ -1121,6 +1120,7 @@ namespace NinjaTrader.Strategy
 
 			if (_checkBoxEnableBarEntry.Checked)
 				ActivateBarEntry();
+			 enterQunatity = (int) _numericUpDownQuantity.Value;
 			_firstOrderSet = true;
 			_strategyState = StrategyState.Enter;
 			_deActivate = false;
@@ -1665,6 +1665,8 @@ namespace NinjaTrader.Strategy
 			catch (Exception ex)
 			{
 				MessageBox.Show("Some problems with your Internet\n E-Mail:" + SendingTopic + "\nWas not sanded");
+				//Todo: remove second massage
+				MessageBox.Show("We got some error"+ex.Message+ex.StackTrace);
 
 				Thread.CurrentThread.Abort();
 			}
@@ -1702,6 +1704,7 @@ namespace NinjaTrader.Strategy
 
 		private int lastQuantity = 0;
 		public MasterInstrument MyInstrument;
+		private int enterQunatity;
 
 		private StringBuilder AddToTextQunaityAndProfit(bool isEntry, bool isPartialProfit, StringBuilder textResult)
 		{
