@@ -22,16 +22,14 @@ using System.Threading;
 // ReSharper disable once CheckNamespace
 namespace NinjaTrader.Strategy
 {
-	//Hello Daniel 
-	// I want to show how the CST looks to work from my side	
-	//So, here is the build that i sen you lest time 
-	//and it almost all the same at it was month ago
+    //Hello Yura I need those lines to be removed 
 	/// <summary>
 	/// Example of the Chart Slope Trade
 	/// </summary>
 	[Description("Trade Slope Lines")]
 	public partial class ChartSlopeTrader : Strategy
 	{
+        //What it's mean?
 		private enum StrategyState:byte
 		{
 			NotActive,  //When we do not activate our lines
