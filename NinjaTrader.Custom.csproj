@@ -112,8 +112,59 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="CQG.NinjaTrader.API">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\CQG.NinjaTrader.API.DLL</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.BarChart">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.BarChart.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.BigTick">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.BigTick.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.Clear">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Clear.dll</HintPath>
+    </Reference>
     <Reference Include="NinjaTrader.Core">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Core.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.Dtn">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Dtn.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.ESignal">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.ESignal.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.Fxcm">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Fxcm.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.Gft">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Gft.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.Google">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Google.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.Hosted">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Hosted.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.IB">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.IB.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.Installer">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Installer.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.Mbt">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Mbt.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.Pfg">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Pfg.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.Tda">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Tda.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.TT">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.TT.dll</HintPath>
+    </Reference>
+    <Reference Include="NinjaTrader.Yahoo">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Yahoo.dll</HintPath>
     </Reference>
     <Reference Include="System">
       <Name>System</Name>
@@ -135,7 +186,7 @@
       <Name>System.XML</Name>
     </Reference>
     <Reference Include="WilsonORMapper">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\WilsonORMapper.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\WilsonORMapper.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
