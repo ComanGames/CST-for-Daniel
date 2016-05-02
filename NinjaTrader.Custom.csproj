@@ -124,6 +124,9 @@
     <Reference Include="NinjaTrader.Clear">
       <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Clear.dll</HintPath>
     </Reference>
+    <Reference Include="NinjaTrader.Client">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Client.dll</HintPath>
+    </Reference>
     <Reference Include="NinjaTrader.Core">
       <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Core.dll</HintPath>
     </Reference>
@@ -450,14 +453,11 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Strategy\ChartSlopeTrader.cs" />
-    <Compile Include="Strategy\DWInteractiveRayLimit.cs" />
     <Compile Include="Strategy\DynamicTrailingStop.cs" />
     <Compile Include="Strategy\AccountInfo.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Strategy\LinesExample.cs" />
     <Compile Include="Strategy\RayContainer.cs" />
-    <Compile Include="Strategy\SomeOtherClass.cs" />
     <Compile Include="Type\%40BarsTypes.cs" />
     <Compile Include="Type\%40ChartStyles.cs" />
     <Compile Include="Type\%40DefaultFillType.cs" />
