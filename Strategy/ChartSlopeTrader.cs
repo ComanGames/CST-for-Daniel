@@ -37,6 +37,7 @@ namespace NinjaTrader.Strategy
 			Exit,       //When we trying to exit by using the SL and TP
 		}
 
+
 		#region Variables
 
 		public const uint LimitShift = 10;
