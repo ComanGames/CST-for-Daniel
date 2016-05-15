@@ -899,6 +899,16 @@ namespace NinjaTrader.Strategy
 			controlCollection.Add(_mainPanel);
 		}
 
+		private void VS2010_UnInitializeComponent()
+		{
+			if (_mainPanel != null)
+			{
+				// Remove and Dispose
+				ChartControl.Controls.Remove(_mainPanel);
+				_mainPanel.Dispose();
+				_mainPanel = null;
+			}
+		}
 		private void _buttonUpdateQuantity_Click(object sender, EventArgs e)
 		{
 			if (_strategyState == StrategyState.NotActive || _strategyState == StrategyState.Exit)
@@ -906,7 +916,7 @@ namespace NinjaTrader.Strategy
 				MessageBox.Show("You are in position or you are not active yet");
 				return;
 			}
-			enterQunatity = (int) _numericUpDownQuantity.Value;
+			enterQuantity = (int) _numericUpDownQuantity.Value;
 		}
 
 		private void _checkBoxEnableTrailStopPreAnalyzeChanged(object sender, EventArgs e)

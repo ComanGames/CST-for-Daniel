@@ -118,9 +118,6 @@
     <Reference Include="NinjaTrader.Core">
       <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Core.dll</HintPath>
     </Reference>
-    <Reference Include="NinjaTrader.Installer">
-      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\NinjaTrader 7\bin\NinjaTrader.Installer.dll</HintPath>
-    </Reference>
     <Reference Include="System">
       <Name>System</Name>
     </Reference>
@@ -351,6 +348,7 @@
     </Compile>
     <Compile Include="Indicator\%40ZLEMA.cs" />
     <Compile Include="Indicator\AAFokrkExtension.cs" />
+    <Compile Include="Indicator\AAAEndOfCompilling.cs" />
     <Compile Include="MarketAnalyzer\%40AskPrice.cs" />
     <Compile Include="MarketAnalyzer\%40AverageDailyVolume.cs" />
     <Compile Include="MarketAnalyzer\%40Beta.cs" />
@@ -401,6 +399,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Strategy\ChartSlopeTrader.cs" />
+    <Compile Include="Strategy\CSTUtilities.cs" />
     <Compile Include="Strategy\DynamicTrailingStop.cs" />
     <Compile Include="Strategy\AccountInfo.cs">
       <SubType>Form</SubType>
