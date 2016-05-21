@@ -7022,7 +7022,7 @@
         </member>
         <member name="T:NinjaTrader.Strategy.ChartSlopeTrader">
             <summary>
-            Example of the Chart Slope Trade
+            Chart Slope Trade
             </summary>
         </member>
         <member name="T:NinjaTrader.Strategy.SampleEnterOnceExitEveryTick">
