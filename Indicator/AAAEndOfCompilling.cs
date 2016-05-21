@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace NinjaTrader.Custom.Indicator
+namespace NinjaTrader.Indicator
 {
     class AAAEndOfCompiling:NinjaTrader.Indicator.Indicator
     {

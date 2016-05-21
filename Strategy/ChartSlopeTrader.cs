@@ -16,7 +16,7 @@ using NinjaTrader.Gui.Chart;
 using Instrument = NinjaTrader.Cbi.Instrument;
 using System.IO;
 using System.Threading;
-using static NinjaTrader.Custom.Strategy.CSTUtilities;
+using static NinjaTrader.Strategy.CSTUtilities;
 #endregion
 
 // ReSharper disable once CheckNamespace

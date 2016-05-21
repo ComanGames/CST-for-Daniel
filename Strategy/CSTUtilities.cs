@@ -2,7 +2,7 @@
 using System.Text;
 using System.Windows.Forms;
 
-namespace NinjaTrader.Custom.Strategy
+namespace NinjaTrader.Strategy
 {
     public static class CSTUtilities
     {
