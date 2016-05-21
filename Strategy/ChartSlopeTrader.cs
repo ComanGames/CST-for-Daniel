@@ -16,7 +16,7 @@ using NinjaTrader.Gui.Chart;
 using Instrument = NinjaTrader.Cbi.Instrument;
 using System.IO;
 using System.Threading;
-using static NinjaTrader.Strategy.CSTUtilities;
+using NinjaTrader.Strategy;
 #endregion
 
 // ReSharper disable once CheckNamespace
@@ -138,7 +138,7 @@ namespace NinjaTrader.Strategy
 			}
 			catch (Exception e)
 			{
-                ExceptionMessage(e);
+                CSTUtilities.ExceptionMessage(e);
 			}
 		}
 
@@ -173,7 +173,7 @@ namespace NinjaTrader.Strategy
 			}
 			catch (Exception e)
 			{
-                ExceptionMessage(e);
+                CSTUtilities.ExceptionMessage(e);
 			}
 		}
 
@@ -235,7 +235,7 @@ namespace NinjaTrader.Strategy
 			}
 			catch (Exception exception)
 			{
-                ExceptionMessage(exception);
+                CSTUtilities.ExceptionMessage(exception);
 			}
 		}
 
@@ -260,7 +260,7 @@ namespace NinjaTrader.Strategy
 			}
 			catch (Exception e)
 			{
-                ExceptionMessage(e);
+                CSTUtilities.ExceptionMessage(e);
 			}
 		}
 
@@ -432,7 +432,7 @@ namespace NinjaTrader.Strategy
 				if (_firstException)
 				{
 					_firstException = false;
-                    ExceptionMessage(e);
+                    CSTUtilities.ExceptionMessage(e);
 				}
 			}
 		}
@@ -1690,7 +1690,7 @@ namespace NinjaTrader.Strategy
 			}
 			catch (Exception e)
 			{
-                ExceptionMessage(e);
+                CSTUtilities.ExceptionMessage(e);
 			}
 			return "some problem with this e-mail text";
 
