@@ -7025,21 +7025,6 @@
             Chart Slope Trade
             </summary>
         </member>
-        <member name="T:NinjaTrader.Strategy.SampleEnterOnceExitEveryTick">
-            <summary>
-            This strategy demonstrates how to run certain calculation logic every tick, while only running entry calculations once per bar.
-            </summary>
-        </member>
-        <member name="M:NinjaTrader.Strategy.SampleEnterOnceExitEveryTick.Initialize">
-            <summary>
-            This method is used to configure the strategy and is called once before any strategy method is called.
-            </summary>
-        </member>
-        <member name="M:NinjaTrader.Strategy.SampleEnterOnceExitEveryTick.OnBarUpdate">
-            <summary>
-            Called on each bar update event (incoming tick)
-            </summary>
-        </member>
         <member name="T:NinjaTrader.Data.DayBarsType">
             <summary>
             </summary>
