@@ -128,7 +128,7 @@ namespace NinjaTrader.Strategy
 			{
 				BarsRequired = 0;//To test even if we got 1 bar on our chart
 				//Setting not quit when we have some problem
-			RealtimeErrorHandling = RealtimeErrorHandling.TakeNoAction;
+                RealtimeErrorHandling = RealtimeErrorHandling.TakeNoAction;
 				MyInstrument = Instrument.MasterInstrument;
 
 //			  AddOtherCurrency();
@@ -1595,7 +1595,7 @@ namespace NinjaTrader.Strategy
 			try
 			{
 				//Getting and converting the image
-				Bitmap chartPicture = GetChartPicture();
+				Bitmap chartPicture = GetChartPictureFast();
 				Bitmap cstPanelPicture = GetCstPanelPicture();
 
 				int width = chartPicture.Width + cstPanelPicture.Width;
@@ -1640,12 +1640,13 @@ namespace NinjaTrader.Strategy
 
 				//Transaction settings 
 				SmtpClient SmtpServer = new SmtpClient("smtp.gmail.com");
-				mail.Subject = SendingTopic;
 				mail.From = new MailAddress(_eMailLogin + "@gmail.com");
 				mail.To.Add(_mailAddress);
 				SmtpServer.Port = 587;
 				SmtpServer.Credentials = new System.Net.NetworkCredential(_eMailLogin, _eMailPassword);
 				SmtpServer.EnableSsl = true;
+
+				mail.Subject = SendingTopic;
 				Thread.Sleep(_millisecondsTimeout);
 				SmtpServer.Send(mail);
 
@@ -1749,21 +1750,6 @@ namespace NinjaTrader.Strategy
 			return textResult;
 		}
 
-		public Bitmap GetChartPicture()
-		{
-		    var bmp = GetChartPictureFast();
-			int counter = 0;
-			do
-			{
-				Thread.Sleep(1500);
-				ChartControl.ChartPanel.DrawToBitmap(bmp, ChartControl.ChartPanel.ClientRectangle);
-				counter++;
-				if (counter > 3)
-					break;
-			} while (true);
-
-			return bmp;
-		}
 
 		public Bitmap GetChartPictureFast()
 		{
