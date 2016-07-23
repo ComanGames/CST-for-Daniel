@@ -617,9 +617,9 @@ namespace NinjaTrader.Indicator
 // This namespace holds all indicators and is required. Do not change it.
 namespace NinjaTrader.Indicator
 {
-    public partial class Indicator
+    public partial class Indicator : IndicatorBase
     {
-        private AAForkExtension[] _cacheAaForkExtension;
+        private AAForkExtension[] cacheAAForkExtension = null;
 
         private static AAForkExtension checkAAForkExtension = new AAForkExtension();
 
@@ -638,17 +638,17 @@ namespace NinjaTrader.Indicator
         /// <returns></returns>
         public AAForkExtension AAForkExtension(Data.IDataSeries input)
         {
-            if (_cacheAaForkExtension != null)
-                for (int idx = 0; idx < _cacheAaForkExtension.Length; idx++)
-                    if (_cacheAaForkExtension[idx].EqualsInput(input))
-                        return _cacheAaForkExtension[idx];
+            if (cacheAAForkExtension != null)
+                for (int idx = 0; idx < cacheAAForkExtension.Length; idx++)
+                    if (cacheAAForkExtension[idx].EqualsInput(input))
+                        return cacheAAForkExtension[idx];
 
             lock (checkAAForkExtension)
             {
-                if (_cacheAaForkExtension != null)
-                    for (int idx = 0; idx < _cacheAaForkExtension.Length; idx++)
-                        if (_cacheAaForkExtension[idx].EqualsInput(input))
-                            return _cacheAaForkExtension[idx];
+                if (cacheAAForkExtension != null)
+                    for (int idx = 0; idx < cacheAAForkExtension.Length; idx++)
+                        if (cacheAAForkExtension[idx].EqualsInput(input))
+                            return cacheAAForkExtension[idx];
 
                 AAForkExtension indicator = new AAForkExtension();
                 indicator.BarsRequired = BarsRequired;
@@ -661,11 +661,11 @@ namespace NinjaTrader.Indicator
                 Indicators.Add(indicator);
                 indicator.SetUp();
 
-                AAForkExtension[] tmp = new AAForkExtension[_cacheAaForkExtension == null ? 1 : _cacheAaForkExtension.Length + 1];
-                if (_cacheAaForkExtension != null)
-                    _cacheAaForkExtension.CopyTo(tmp, 0);
+                AAForkExtension[] tmp = new AAForkExtension[cacheAAForkExtension == null ? 1 : cacheAAForkExtension.Length + 1];
+                if (cacheAAForkExtension != null)
+                    cacheAAForkExtension.CopyTo(tmp, 0);
                 tmp[tmp.Length - 1] = indicator;
-                _cacheAaForkExtension = tmp;
+                cacheAAForkExtension = tmp;
                 return indicator;
             }
         }

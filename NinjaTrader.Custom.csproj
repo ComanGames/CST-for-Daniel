@@ -348,7 +348,6 @@
     </Compile>
     <Compile Include="Indicator\%40ZLEMA.cs" />
     <Compile Include="Indicator\AAFokrkExtension.cs" />
-    <Compile Include="Indicator\AAAEndOfCompilling.cs" />
     <Compile Include="MarketAnalyzer\%40AskPrice.cs" />
     <Compile Include="MarketAnalyzer\%40AverageDailyVolume.cs" />
     <Compile Include="MarketAnalyzer\%40Beta.cs" />

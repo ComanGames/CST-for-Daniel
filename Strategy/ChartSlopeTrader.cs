@@ -1085,19 +1085,38 @@ namespace NinjaTrader.Strategy
 				rayToUse.EndY = averagePrice;
 			}
 		}
-		private void MakeRaySlope(IRay ray,double pipsTomove)
+        //Heres is your formula for counting new ray postion
+		private void MakeRaySlope(IRay ray,decimal newSlope)
 		{
 			ChartRay rayToUse = ray as ChartRay;
-            double distance = RealTickSize * pipsTomove;
+//            decimal distance = RealTickSize * newCtg;
+		    double y = ((rayToUse.EndY - rayToUse.StartY)/RealTickSize);
+		    double x = rayToUse.EndBar - rayToUse.StartBar;
+		    double hip = Math.Pow(((Math.Pow(x, 2) + Math.Pow(y, 2))),0.5d);
+		    double slope = x/y;
+		    double newY = Math.Pow((Math.Pow(hip, 2)/((double) (Math.Pow((double)newSlope,2) + 1))), 0.5d);
+		    double newX= (double)newSlope*newY;
+            double newHip = Math.Pow(((Math.Pow(newX, 2) + Math.Pow(newY, 2))), 0.5d);
+            string messageText = (String.Format("x={0}\n" +
+		                                  "y={1}\n" +
+		                                  "hip={2}\n" +
+		                                  "slope={3}\nnewSlope{4}",x,y,hip,slope,x/y));
+		    messageText += (String.Format("\nnew!!1" +
+		                                  "x={0}\n" +
+		                                  "y={1}\n" +
+		                                  "hip={2}\n" +
+		                                  "slope={3}\nnewSlope{4}",newX,newY,newHip,(double)newSlope,newX/newY));
+		    MessageBox.Show(messageText);
             if (rayToUse != null)
 			{
-			    if (pipsTomove <= 1&&pipsTomove>=-1)
+			    if (newSlope <= 0.1M&&newSlope>=-0.1M)
 			    {
 			        rayToUse.EndY = rayToUse.StartY;
 			    }
 			    else
 			    {
-			        rayToUse.EndY = rayToUse.StartY + distance;
+			        rayToUse.EndY = rayToUse.StartY +(newY*RealTickSize);
+			        rayToUse.EndBar = rayToUse.StartBar + (int)newX;
 			    }
 			}
 		}

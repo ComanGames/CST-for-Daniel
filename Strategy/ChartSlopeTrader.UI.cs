@@ -439,13 +439,14 @@ namespace NinjaTrader.Strategy
 
             _numericUpDownSlope.Location = new Point(71, 12);
 			_numericUpDownSlope.Margin = new Padding(2);
-			_numericUpDownSlope.Maximum = 1000;
-			_numericUpDownSlope.Minimum = -1000;
+			_numericUpDownSlope.Maximum = 100;
+			_numericUpDownSlope.Minimum = -100;
 			_numericUpDownSlope.Name = "numericUpDown_Slope";
 			_numericUpDownSlope.Size = new Size(79, 20);
 			_numericUpDownSlope.TabIndex = 41;
 			_numericUpDownSlope.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownSlope.Value = new decimal(new[] { 0, 0, 0, 0 });
+		    _numericUpDownBarEntry.Value = 0.5M;
+			_numericUpDownSlope.Increment = 1;
 			// 
 			// button_ClosePosition
 			// 
@@ -950,7 +951,8 @@ namespace NinjaTrader.Strategy
             IRay ray;
             if (GetSelectedRay(out ray))
             {
-                MakeRaySlope(ray,(double)_numericUpDownSlope.Value);
+//                MessageBox.Show();
+                MakeRaySlope(ray,_numericUpDownSlope.Value);
                 // ReSharper disable once UseNullPropagation
                 if (_currentRayContainer != null)
                 {
