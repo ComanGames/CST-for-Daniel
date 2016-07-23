@@ -129,7 +129,7 @@ namespace NinjaTrader.Strategy
                 ExitOnClose = false;
                 BarsRequired = 0;//To test even if we got 1 bar on our chart
 				//Setting not quit when we have some problem
-			RealtimeErrorHandling = RealtimeErrorHandling.TakeNoAction;
+                RealtimeErrorHandling = RealtimeErrorHandling.TakeNoAction;
 				MyInstrument = Instrument.MasterInstrument;
 
 //			  AddOtherCurrency();
@@ -1086,6 +1086,41 @@ namespace NinjaTrader.Strategy
 				rayToUse.EndY = averagePrice;
 			}
 		}
+        //Heres is your formula for counting new ray postion
+		private void MakeRaySlope(IRay ray,decimal newSlope)
+		{
+			ChartRay rayToUse = ray as ChartRay;
+//            decimal distance = RealTickSize * newCtg;
+		    double y = ((rayToUse.EndY - rayToUse.StartY)/RealTickSize);
+		    double x = rayToUse.EndBar - rayToUse.StartBar;
+		    double hip = Math.Pow(((Math.Pow(x, 2) + Math.Pow(y, 2))),0.5d);
+		    double slope = y/x;
+		    double newX = Math.Pow((Math.Pow(hip, 2)/((double) (Math.Pow((double)newSlope,2) + 1))), 0.5d);
+		    double newY= (double)newSlope*newX;
+            double newHip = Math.Pow(((Math.Pow(newX, 2) + Math.Pow(newY, 2))), 0.5d);
+            string messageText = (String.Format("x={0}\n" +
+		                                  "y={1}\n" +
+		                                  "hip={2}\n" +
+		                                  "slope={3}\nnewSlope{4}",x,y,hip,slope,x/y));
+		    messageText += (String.Format("\nnew!!1" +
+		                                  "x={0}\n" +
+		                                  "y={1}\n" +
+		                                  "hip={2}\n" +
+		                                  "slope={3}\nnewSlope{4}",newX,newY,newHip,(double)newSlope,newX/newY));
+		    MessageBox.Show(messageText);
+            if (rayToUse != null)
+			{
+			    if (newSlope <= 0.1M&&newSlope>=-0.1M)
+			    {
+			        rayToUse.EndY = rayToUse.StartY;
+			    }
+			    else
+			    {
+			        rayToUse.EndY = rayToUse.StartY +(newY*RealTickSize);
+			        rayToUse.EndBar = rayToUse.StartBar + (int)newX;
+			    }
+			}
+		}
 
 		private void _buttonActivateClick(object sender, EventArgs e)
 		{
@@ -1596,7 +1631,7 @@ namespace NinjaTrader.Strategy
 			try
 			{
 				//Getting and converting the image
-				Bitmap chartPicture = GetChartPicture();
+				Bitmap chartPicture = GetChartPictureFast();
 				Bitmap cstPanelPicture = GetCstPanelPicture();
 
 				int width = chartPicture.Width + cstPanelPicture.Width;
@@ -1641,12 +1676,13 @@ namespace NinjaTrader.Strategy
 
 				//Transaction settings 
 				SmtpClient SmtpServer = new SmtpClient("smtp.gmail.com");
-				mail.Subject = SendingTopic;
 				mail.From = new MailAddress(_eMailLogin + "@gmail.com");
 				mail.To.Add(_mailAddress);
 				SmtpServer.Port = 465;
 				SmtpServer.Credentials = new System.Net.NetworkCredential(_eMailLogin, _eMailPassword);
 				SmtpServer.EnableSsl = true;
+
+				mail.Subject = SendingTopic;
 				Thread.Sleep(_millisecondsTimeout);
 				SmtpServer.Send(mail);
 
@@ -1750,21 +1786,6 @@ namespace NinjaTrader.Strategy
 			return textResult;
 		}
 
-		public Bitmap GetChartPicture()
-		{
-		    var bmp = GetChartPictureFast();
-			int counter = 0;
-			do
-			{
-				Thread.Sleep(1500);
-				ChartControl.ChartPanel.DrawToBitmap(bmp, ChartControl.ChartPanel.ClientRectangle);
-				counter++;
-				if (counter > 3)
-					break;
-			} while (true);
-
-			return bmp;
-		}
 
 		public Bitmap GetChartPictureFast()
 		{

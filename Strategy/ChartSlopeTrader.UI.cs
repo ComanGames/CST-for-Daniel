@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using NinjaTrader.Cbi;
 using NinjaTrader.Gui.Chart;
+//TExt
 
 namespace NinjaTrader.Strategy
 {
@@ -15,10 +16,13 @@ namespace NinjaTrader.Strategy
 		private GroupBox _groupBoxStatusWindow;
 		private GroupBox _groupBoxQuantity;
 		private NumericUpDown _numericUpDownQuantity;
+		private Button _buttonUpdateQuantity;
+		private GroupBox _groupBoxSlope;
+		private NumericUpDown _numericUpDownSlope;
+		private Button _buttonUpdateSlope;
 		private Button _buttonClosePosition;
 		private Button _buttonManualShort;
 		private Button _buttonManualLong;
-		private Button _buttonUpdateQuantity;
 		private GroupBox _groupBoxPartialProfit;
 		private CheckBox _checkBoxEnablePartialProfit;
 		private Button _buttonCloseHalfPosition;
@@ -94,6 +98,9 @@ namespace NinjaTrader.Strategy
 			_groupBoxQuantity = new GroupBox();
 			_buttonUpdateQuantity = new Button();
 			_numericUpDownQuantity = new NumericUpDown();
+			_groupBoxSlope= new GroupBox();
+			_buttonUpdateSlope= new Button();
+			_numericUpDownSlope= new NumericUpDown();
 			_buttonClosePosition = new Button();
 			_buttonManualShort = new Button();
 			_buttonManualLong = new Button();
@@ -131,6 +138,8 @@ namespace NinjaTrader.Strategy
 			_groupBoxPartialProfit.SuspendLayout();
 			_groupBoxQuantity.SuspendLayout();
 			((ISupportInitialize)(_numericUpDownQuantity)).BeginInit();
+			_groupBoxSlope.SuspendLayout();
+			((ISupportInitialize)(_numericUpDownSlope)).BeginInit();
 			_mainPanel.SuspendLayout();
 			_groupBoxOnBarEntry.SuspendLayout();
 			_groupBoxMail.SuspendLayout();
@@ -369,11 +378,11 @@ namespace NinjaTrader.Strategy
 			_groupBoxQuantity.BackColor = SystemColors.ControlLight;
 			_groupBoxQuantity.Controls.Add(_buttonUpdateQuantity);
 			_groupBoxQuantity.Controls.Add(_numericUpDownQuantity);
-			_groupBoxQuantity.Location = new Point(6, 137);
+			_groupBoxQuantity.Location = new Point(6, 165);
 			_groupBoxQuantity.Margin = new Padding(2);
 			_groupBoxQuantity.Name = "groupBox_Quantity";
 			_groupBoxQuantity.Padding = new Padding(2);
-			_groupBoxQuantity.Size = new Size(154, 41);
+			_groupBoxQuantity.Size = new Size(154, 35);
 			_groupBoxQuantity.TabIndex = 4;
 			_groupBoxQuantity.TabStop = false;
 			_groupBoxQuantity.Text = "Quantity";
@@ -381,26 +390,63 @@ namespace NinjaTrader.Strategy
 			// button_UpdateQuantity
 			// 
 			_buttonUpdateQuantity.BackColor = Color.SkyBlue;
-			_buttonUpdateQuantity.Location = new Point(8, 15);
+			_buttonUpdateQuantity.Location = new Point(8, 12);
 			_buttonUpdateQuantity.Margin = new Padding(2);
 			_buttonUpdateQuantity.Name = "button_UpdateQuantity";
-			_buttonUpdateQuantity.Size = new Size(59, 22);
+			_buttonUpdateQuantity.Size = new Size(59, 20);
 			_buttonUpdateQuantity.TabIndex = 1;
 			_buttonUpdateQuantity.Text = "Update";
 			_buttonUpdateQuantity.UseVisualStyleBackColor = false;
-			_buttonUpdateQuantity.Click += _buttonUpdateQuantity_Click;
+		    _buttonUpdateQuantity.Click += _buttonUpdateQuantity_Click;
 			// 
 			// numericUpDown_Quantity
 			// 
 			_numericUpDownQuantity.Location = new Point(71, 16);
 			_numericUpDownQuantity.Margin = new Padding(2);
-			_numericUpDownQuantity.Maximum = new decimal(new[] { 1000000, 0, 0, 0 });
-			_numericUpDownQuantity.Minimum = new decimal(new[] { 1, 0, 0, 0 });
+			_numericUpDownQuantity.Maximum = 1000;
+			_numericUpDownQuantity.Minimum = -1000;
 			_numericUpDownQuantity.Name = "numericUpDown_Quantity";
-			_numericUpDownQuantity.Size = new Size(79, 20);
-			_numericUpDownQuantity.TabIndex = 0;
+			_numericUpDownQuantity.Size = new Size(79, 12);
+			_numericUpDownQuantity.TabIndex = 42;
 			_numericUpDownQuantity.TextAlign = HorizontalAlignment.Center;
 			_numericUpDownQuantity.Value = new decimal(new[] { 10, 0, 0, 0 });
+			// 
+			// groupBox_Slope
+			// 
+			_groupBoxSlope.BackColor = SystemColors.ControlLight;
+			_groupBoxSlope.Controls.Add(_buttonUpdateSlope);
+			_groupBoxSlope.Controls.Add(_numericUpDownSlope);
+			_groupBoxSlope.Location = new Point(6, 130);
+			_groupBoxSlope.Margin = new Padding(2);
+			_groupBoxSlope.Name = "groupBox_Slope";
+			_groupBoxSlope.Padding = new Padding(2);
+			_groupBoxSlope.Size = new Size(154, 35);
+			_groupBoxSlope.TabIndex = 4;
+			_groupBoxSlope.TabStop = false;
+			_groupBoxSlope.Text = "Slope";
+            // 
+			// button_UpdateSlope
+			// 
+			_buttonUpdateSlope.BackColor = Color.SkyBlue;
+			_buttonUpdateSlope.Location = new Point(8, 12);
+			_buttonUpdateSlope.Margin = new Padding(2);
+			_buttonUpdateSlope.Name = "button_UpdateSlope";
+			_buttonUpdateSlope.Size = new Size(59, 20);
+			_buttonUpdateSlope.TabIndex = 1;
+			_buttonUpdateSlope.Text = "Update";
+			_buttonUpdateSlope.UseVisualStyleBackColor = false;
+		    _buttonUpdateSlope.Click += _buttonUpdateSlope_Click;
+
+            _numericUpDownSlope.Location = new Point(71, 12);
+			_numericUpDownSlope.Margin = new Padding(2);
+			_numericUpDownSlope.Maximum = 100;
+			_numericUpDownSlope.Minimum = -100;
+			_numericUpDownSlope.Name = "numericUpDown_Slope";
+			_numericUpDownSlope.Size = new Size(79, 20);
+			_numericUpDownSlope.TabIndex = 41;
+			_numericUpDownSlope.TextAlign = HorizontalAlignment.Center;
+		    _numericUpDownBarEntry.Value = 0.5M;
+			_numericUpDownSlope.Increment = 1;
 			// 
 			// button_ClosePosition
 			// 
@@ -454,6 +500,7 @@ namespace NinjaTrader.Strategy
 			_mainPanel.Controls.Add(_groupBoxStatusWindow);
 			_mainPanel.Controls.Add(_groupBoxPartialProfit);
 			_mainPanel.Controls.Add(_groupBoxQuantity);
+			_mainPanel.Controls.Add(_groupBoxSlope);
 			_mainPanel.Controls.Add(_groupBoxMode);
 			_mainPanel.Dock = DockStyle.Right;
 			_mainPanel.Location = new Point(931, 0);
@@ -899,7 +946,28 @@ namespace NinjaTrader.Strategy
 			controlCollection.Add(_mainPanel);
 		}
 
-		private void VS2010_UnInitializeComponent()
+	    private void _buttonUpdateSlope_Click(object sender, EventArgs e)
+	    {
+            IRay ray;
+            if (GetSelectedRay(out ray))
+            {
+//                MessageBox.Show();
+                MakeRaySlope(ray,_numericUpDownSlope.Value);
+                // ReSharper disable once UseNullPropagation
+                if (_currentRayContainer != null)
+                {
+
+                }
+                // ReSharper disable once UseNullPropagation
+                if (_currentRayContainer != null)
+                    _currentRayContainer.Update();
+                UpdateForms();
+            }
+            else
+                MassageIfLineNotSelected();
+	    }
+
+	    private void VS2010_UnInitializeComponent()
 		{
 			if (_mainPanel != null)
 			{
