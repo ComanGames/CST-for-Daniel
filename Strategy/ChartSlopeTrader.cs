@@ -66,21 +66,21 @@ namespace NinjaTrader.Strategy
 		private bool _deActivate;
 		private int _realQuantity;
 
-		#endregion
+        #endregion
 
-		#region Mail Settings
+        #region Mail Settings
 
-		private string _mailAddress = "daniel@danielwardzynski.com";
-		private string _eMailLogin = "chartslopetrader";
-		private string _eMailPassword = "123qwe456rty";
-//		private string _mailAddress = "comman.games@outlook.com";
-//		private string _eMailLogin = "alfaa.gen";
-//		private string _eMailPassword = "Train@concentration";
-		#endregion
+        private string _mailAddress = "alert@danielwardzynski.com";
+        private string _eMailLogin = "cst2016version01";
+        private string _eMailPassword = "123Qwe345Rty";
+        //private string _mailAddress = "comman.games@outlook.com";
+        //private string _eMailLogin = "alfaa.gen";
+        //private string _eMailPassword = "Train@concentration";
+        #endregion
 
-		#region AuroProportys
+        #region AuroProportys
 
-		public double ProportionalDistance { get; set; }
+        public double ProportionalDistance { get; set; }
 
 		private string SendingText { get; set; }
 
@@ -126,7 +126,8 @@ namespace NinjaTrader.Strategy
 		{
 			try
 			{
-				BarsRequired = 0;//To test even if we got 1 bar on our chart
+                ExitOnClose = false;
+                BarsRequired = 0;//To test even if we got 1 bar on our chart
 				//Setting not quit when we have some problem
                 RealtimeErrorHandling = RealtimeErrorHandling.TakeNoAction;
 				MyInstrument = Instrument.MasterInstrument;
@@ -1677,7 +1678,7 @@ namespace NinjaTrader.Strategy
 				SmtpClient SmtpServer = new SmtpClient("smtp.gmail.com");
 				mail.From = new MailAddress(_eMailLogin + "@gmail.com");
 				mail.To.Add(_mailAddress);
-				SmtpServer.Port = 587;
+				SmtpServer.Port = 465;
 				SmtpServer.Credentials = new System.Net.NetworkCredential(_eMailLogin, _eMailPassword);
 				SmtpServer.EnableSsl = true;
 
