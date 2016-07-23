@@ -1093,9 +1093,9 @@ namespace NinjaTrader.Strategy
 		    double y = ((rayToUse.EndY - rayToUse.StartY)/RealTickSize);
 		    double x = rayToUse.EndBar - rayToUse.StartBar;
 		    double hip = Math.Pow(((Math.Pow(x, 2) + Math.Pow(y, 2))),0.5d);
-		    double slope = x/y;
-		    double newY = Math.Pow((Math.Pow(hip, 2)/((double) (Math.Pow((double)newSlope,2) + 1))), 0.5d);
-		    double newX= (double)newSlope*newY;
+		    double slope = y/x;
+		    double newX = Math.Pow((Math.Pow(hip, 2)/((double) (Math.Pow((double)newSlope,2) + 1))), 0.5d);
+		    double newY= (double)newSlope*newX;
             double newHip = Math.Pow(((Math.Pow(newX, 2) + Math.Pow(newY, 2))), 0.5d);
             string messageText = (String.Format("x={0}\n" +
 		                                  "y={1}\n" +
