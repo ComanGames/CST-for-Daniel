@@ -1085,6 +1085,22 @@ namespace NinjaTrader.Strategy
 				rayToUse.EndY = averagePrice;
 			}
 		}
+		private void MakeRaySlope(IRay ray,double pipsTomove)
+		{
+			ChartRay rayToUse = ray as ChartRay;
+            double distance = RealTickSize * pipsTomove;
+            if (rayToUse != null)
+			{
+			    if (pipsTomove <= 1&&pipsTomove>=-1)
+			    {
+			        rayToUse.EndY = rayToUse.StartY;
+			    }
+			    else
+			    {
+			        rayToUse.EndY = rayToUse.StartY + distance;
+			    }
+			}
+		}
 
 		private void _buttonActivateClick(object sender, EventArgs e)
 		{
