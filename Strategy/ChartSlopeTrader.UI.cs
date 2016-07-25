@@ -494,11 +494,12 @@ namespace NinjaTrader.Strategy
             // 
             // vScrollBar1
             // 
+            //Ilona my changes are here.
             this.vScrollBar1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.vScrollBar1.Location = new System.Drawing.Point(267, -1);
+            this.vScrollBar1.Location = new System.Drawing.Point(160, -1);
             this.vScrollBar1.Name = "vScrollBar1";
-            this.vScrollBar1.Size = new System.Drawing.Size(20, 430);
+            this.vScrollBar1.Size = new System.Drawing.Size(20, 900);
             this.vScrollBar1.TabIndex = 0;
             this.vScrollBar1.Scroll += new System.Windows.Forms.ScrollEventHandler(this.vScrollBar1_Scroll);
 
@@ -981,8 +982,14 @@ namespace NinjaTrader.Strategy
             else
                 MassageIfLineNotSelected();
 	    }
+        private int scrollMutliplayer = 5;
+        private void vScrollBar1_Scroll(object sender, ScrollEventArgs e)
+        {
+//            textBox1.Text = vScrollBar1.Value.ToString();
+//            groupBox1.Location = new Point(groupBox1.Location.X, startBoxPostion - (vScrollBar1.Value * scrollMutliplayer));
+        }
 
-	    private void VS2010_UnInitializeComponent()
+        private void VS2010_UnInitializeComponent()
 		{
 			if (_mainPanel != null)
 			{
