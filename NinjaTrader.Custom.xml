@@ -6130,11 +6130,18 @@
             It usualson a quit when we guit for the chart
             </summary>
         </member>
-        <member name="F:NinjaTrader.Indicator.AAForkExtension.DrawingFork">
+        <member name="M:NinjaTrader.Indicator.AAForkExtension.OnBarUpdate">
+            <summary>
+            Called on each bar update event (incoming tick)
+            </summary>
+        </member>
+        <member name="F:NinjaTrader.Indicator.AAForkExtension._newForkClick">
             <summary>
             This Method we call every time we click
             over mouse some where on the chart
             </summary>
+            <param name="sender"></param>
+            <param name="e"></param>
         </member>
         <member name="M:NinjaTrader.Indicator.AAForkExtension.Plot(System.Drawing.Graphics,System.Drawing.Rectangle,System.Double,System.Double)">
             <summary>
