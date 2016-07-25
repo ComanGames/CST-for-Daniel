@@ -13,7 +13,8 @@ namespace NinjaTrader.Strategy
 	#region VS2010 Controls Paste
 
 		private Panel _mainPanel;
-		private GroupBox _groupBoxStatusWindow;
+        private System.Windows.Forms.VScrollBar vScrollBar1;
+        private GroupBox _groupBoxStatusWindow;
 		private GroupBox _groupBoxQuantity;
 		private NumericUpDown _numericUpDownQuantity;
 		private Button _buttonUpdateQuantity;
@@ -104,6 +105,7 @@ namespace NinjaTrader.Strategy
 			_buttonClosePosition = new Button();
 			_buttonManualShort = new Button();
 			_buttonManualLong = new Button();
+            vScrollBar1 = new VScrollBar();
 			_mainPanel = new Panel();
 			_groupBoxOnBarEntry = new GroupBox();
 			_groupBoxMail = new GroupBox();
@@ -489,10 +491,21 @@ namespace NinjaTrader.Strategy
 			_buttonManualLong.Text = "LONG";
 			_buttonManualLong.UseVisualStyleBackColor = false;
 			_buttonManualLong.Click += _buttonLongClick;
-			// 
-			// MainPanel
-			// 
-			_mainPanel.BackColor = SystemColors.Control;
+            // 
+            // vScrollBar1
+            // 
+            this.vScrollBar1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.vScrollBar1.Location = new System.Drawing.Point(267, -1);
+            this.vScrollBar1.Name = "vScrollBar1";
+            this.vScrollBar1.Size = new System.Drawing.Size(20, 430);
+            this.vScrollBar1.TabIndex = 0;
+            this.vScrollBar1.Scroll += new System.Windows.Forms.ScrollEventHandler(this.vScrollBar1_Scroll);
+
+            // 
+            // MainPanel
+            // 
+            _mainPanel.BackColor = SystemColors.Control;
 			_mainPanel.Controls.Add(_groupBoxOnBarEntry);
 			_mainPanel.Controls.Add(_groupBoxMail);
 			_mainPanel.Controls.Add(_groupBoxStopToEntry);
@@ -502,11 +515,13 @@ namespace NinjaTrader.Strategy
 			_mainPanel.Controls.Add(_groupBoxQuantity);
 			_mainPanel.Controls.Add(_groupBoxSlope);
 			_mainPanel.Controls.Add(_groupBoxMode);
+		    _mainPanel.Controls.Add(vScrollBar1);
+
 			_mainPanel.Dock = DockStyle.Right;
 			_mainPanel.Location = new Point(931, 0);
 			_mainPanel.Margin = new Padding(2);
 			_mainPanel.Name = "MainPanel";
-			_mainPanel.Size = new Size(165, 831);
+			_mainPanel.Size = new Size(185, 831);
 			_mainPanel.TabIndex = 1;
 			// 
 			// groupBox1
