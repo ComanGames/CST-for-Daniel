@@ -126,8 +126,8 @@ namespace NinjaTrader.Strategy
 		{
 			try
 			{
-                ExitOnClose = false;
-                BarsRequired = 0;//To test even if we got 1 bar on our chart
+//                ExitOnClose = false;
+                BarsRequired = -1;//To test even if we got 1 bar on our chart
 				//Setting not quit when we have some problem
                 RealtimeErrorHandling = RealtimeErrorHandling.TakeNoAction;
 				MyInstrument = Instrument.MasterInstrument;
