@@ -405,7 +405,7 @@ namespace NinjaTrader.Strategy
 			// 
 			_numericUpDownQuantity.Location = new Point(71, 16);
 			_numericUpDownQuantity.Margin = new Padding(2);
-			_numericUpDownQuantity.Maximum = 10000000;
+			_numericUpDownQuantity.Maximum = 1000000;
 			_numericUpDownQuantity.Minimum = 0;
 			_numericUpDownQuantity.Name = "numericUpDown_Quantity";
 			_numericUpDownQuantity.Size = new Size(79, 12);
@@ -863,8 +863,8 @@ namespace NinjaTrader.Strategy
 			// numericUpDown_PipTicksToActivateDistance
 			// 
 			_numericUpDownPipTicksToActivateDistance.Location = new Point(90, 74);
-			_numericUpDownPipTicksToActivateDistance.Maximum = new decimal(new[] { 10000000, 0, 0, 0 });
-			_numericUpDownPipTicksToActivateDistance.Minimum = 0;
+			_numericUpDownPipTicksToActivateDistance.Maximum = new decimal(new[] { 1000, 0, 0, 0 });
+			_numericUpDownPipTicksToActivateDistance.Minimum = -1000;
 			_numericUpDownPipTicksToActivateDistance.Size = new Size(60, 20);
 			_numericUpDownPipTicksToActivateDistance.TextAlign = HorizontalAlignment.Center;
 			_numericUpDownPipTicksToActivateDistance.Value = new decimal(new[] { 5, 0, 0, 0 });
