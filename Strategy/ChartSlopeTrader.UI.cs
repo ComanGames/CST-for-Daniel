@@ -405,8 +405,8 @@ namespace NinjaTrader.Strategy
 			// 
 			_numericUpDownQuantity.Location = new Point(71, 16);
 			_numericUpDownQuantity.Margin = new Padding(2);
-			_numericUpDownQuantity.Maximum = 1000;
-			_numericUpDownQuantity.Minimum = -1000;
+			_numericUpDownQuantity.Maximum = 10000000;
+			_numericUpDownQuantity.Minimum = 0;
 			_numericUpDownQuantity.Name = "numericUpDown_Quantity";
 			_numericUpDownQuantity.Size = new Size(79, 12);
 			_numericUpDownQuantity.TabIndex = 42;
