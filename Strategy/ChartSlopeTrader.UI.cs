@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
@@ -405,13 +405,13 @@ namespace NinjaTrader.Strategy
 			// 
 			_numericUpDownQuantity.Location = new Point(71, 16);
 			_numericUpDownQuantity.Margin = new Padding(2);
-			_numericUpDownQuantity.Maximum = 1000000;
-			_numericUpDownQuantity.Minimum = 0;
+			_numericUpDownQuantity.Maximum = 1000000; // this is the maximum trade amount that can be entered next to the Quantity update button
+            _numericUpDownQuantity.Minimum = 0; // this is the minumum trade amount that can be entered next to the Quantity update button
 			_numericUpDownQuantity.Name = "numericUpDown_Quantity";
 			_numericUpDownQuantity.Size = new Size(79, 12);
 			_numericUpDownQuantity.TabIndex = 42;
 			_numericUpDownQuantity.TextAlign = HorizontalAlignment.Center;
-			_numericUpDownQuantity.Value = new decimal(new[] { 10, 0, 0, 0 });
+			_numericUpDownQuantity.Value = new decimal(new[] { 1, 0, 0, 0 }); // this is the initial trade amount next to the Quantity update button that will show up when I activate the strategy
 			// 
 			// groupBox_Slope
 			// 
